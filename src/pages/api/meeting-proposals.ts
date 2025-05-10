@@ -3,7 +3,6 @@ import { meeting_proposals_schema } from "../../lib/validations/meeting-proposal
 import { generate_proposals } from "../../lib/services/meeting-proposals.service";
 import { DEFAULT_USER_ID } from "../../db/supabase.client";
 import type { APIRoute } from "astro";
-import type { MeetingProposalResponseDto } from "../../types";
 
 export const prerender = false;
 
@@ -28,7 +27,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(
         JSON.stringify({
           message: "Nieprawidłowe dane wejściowe",
-          errors: error.format(),
+          errors: (error as z.ZodError).format(),
         }),
         {
           status: 400,
@@ -37,6 +36,7 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    // eslint-disable-next-line no-console
     console.error("Error generating meeting proposals:", error);
     return new Response(JSON.stringify({ message: "Internal Server Error" }), {
       status: 500,
@@ -64,6 +64,7 @@ async function update_proposal_stats(user_id: string) {
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 is "no rows returned" error
+      // eslint-disable-next-line no-console
       console.error("Error checking proposal stats:", error);
       return;
     }
@@ -89,6 +90,7 @@ async function update_proposal_stats(user_id: string) {
       });
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error updating proposal stats:", error);
     // Non-critical functionality, so we don't throw an error that would affect the main response
   }

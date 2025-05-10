@@ -5,6 +5,7 @@ import type {
   NoteAnalysisResponseDto,
   MeetingPreferencesEntity,
   MeetingCategoryEntity,
+  MeetingDistribution,
   TimeOfDay,
 } from "../../types";
 import { supabaseClient } from "../../db/supabase.client";
@@ -41,6 +42,7 @@ export async function generate_proposals(
       proposals,
     };
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error generating meeting proposals:", error);
     throw error;
   }
@@ -54,13 +56,14 @@ async function get_user_preferences(user_id: string): Promise<MeetingPreferences
   const { data, error } = await supabaseClient.from("meeting_preferences").select("*").eq("user_id", user_id).single();
 
   if (error) {
+    // eslint-disable-next-line no-console
     console.error("Error fetching user preferences:", error);
     // Return default preferences if not found
     return {
       id: crypto.createHash("md5").update(`${user_id}-default`).digest("hex"),
       user_id,
-      preferred_distribution: "rozłożone",
-      preferred_times_of_day: ["rano", "dzień"],
+      preferred_distribution: "roz\u0142o\u017Cone" as MeetingDistribution, // rozłożone with unicode escapes
+      preferred_times_of_day: ["rano", "dzie\u0144"] as TimeOfDay[], // dzień with unicode escape
       min_break_minutes: 30,
       unavailable_weekdays: [0, 6], // Sunday and Saturday
     };
@@ -76,6 +79,7 @@ async function get_meeting_categories(): Promise<MeetingCategoryEntity[]> {
   const { data, error } = await supabaseClient.from("meeting_categories").select("*");
 
   if (error) {
+    // eslint-disable-next-line no-console
     console.error("Error fetching meeting categories:", error);
     // Return default category if error
     return [
@@ -137,7 +141,7 @@ async function generate_meeting_times(
   const duration = command.estimated_duration || note_analysis.estimated_duration || 60; // Default to 60 minutes
 
   // Generate a list of potential days for meetings (next 7 days)
-  const potentialDays = [];
+  const potentialDays: Date[] = [];
   for (let i = 1; i <= 7; i++) {
     const date = new Date(Date.now() + i * 24 * 60 * 60 * 1000);
     // Skip days that are marked as unavailable in user preferences
@@ -157,8 +161,10 @@ async function generate_meeting_times(
   const numProposals = Math.min(potentialDays.length, potentialDays.length >= 3 ? 3 : 2);
 
   // Apply distribution preference
-  let selectedDays = [];
-  if (user_preferences.preferred_distribution === "rozłożone") {
+  let selectedDays: Date[] = [];
+  const distributed = "roz\u0142o\u017Cone" as MeetingDistribution; // rozłożone with unicode escapes
+
+  if (user_preferences.preferred_distribution === distributed) {
     // For distributed preferences, select days spread out across the available ones
     selectedDays = distributeDays(potentialDays, numProposals);
   } else {
@@ -213,7 +219,7 @@ function distributeDays(availableDays: Date[], count: number): Date[] {
     return [...availableDays]; // Return all available days if fewer than requested
   }
 
-  const result = [];
+  const result: Date[] = [];
   // Calculate step size to distribute evenly
   const step = Math.floor(availableDays.length / count);
 
@@ -269,7 +275,7 @@ function condenseDays(availableDays: Date[], count: number): Date[] {
 /**
  * Sets the time of day based on user preferences
  */
-function setPreferredTime(date: Date, preferred_times: string[]): void {
+function setPreferredTime(date: Date, preferred_times: TimeOfDay[]): void {
   // Default to afternoon if no preferences
   if (!preferred_times || preferred_times.length === 0) {
     date.setHours(14, 0, 0, 0);
@@ -277,11 +283,15 @@ function setPreferredTime(date: Date, preferred_times: string[]): void {
   }
 
   // Pick a time based on preferences
-  if (preferred_times.includes("rano")) {
+  const morning = "rano" as TimeOfDay;
+  const afternoon = "dzie\u0144" as TimeOfDay; // dzień with unicode escape
+  const evening = "wiecz\u00f3r" as TimeOfDay; // wieczór with unicode escape
+
+  if (preferred_times.includes(morning)) {
     date.setHours(9, 0, 0, 0);
-  } else if (preferred_times.includes("dzień")) {
+  } else if (preferred_times.includes(afternoon)) {
     date.setHours(14, 0, 0, 0);
-  } else if (preferred_times.includes("wieczór")) {
+  } else if (preferred_times.includes(evening)) {
     date.setHours(18, 0, 0, 0);
   } else {
     // Default fallback
@@ -295,7 +305,7 @@ function setPreferredTime(date: Date, preferred_times: string[]): void {
 function adjustForConflicts(
   proposedDate: Date,
   duration: number,
-  existingMeetings: any[],
+  existingMeetings: { start_time: string; end_time: string }[],
   minBreakMinutes: number
 ): void {
   const endTime = new Date(proposedDate.getTime() + duration * 60 * 1000);
