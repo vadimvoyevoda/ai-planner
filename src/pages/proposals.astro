@@ -1,0 +1,21 @@
+---
+import Layout from "../layouts/Layout.astro";
+import ProposalsPage from "../components/proposals/ProposalsPage";
+
+// Set prerender to false to enable server-side rendering for this route
+export const prerender = false;
+
+// Get proposal parameters from query string
+const { searchParams } = Astro.url;
+const note = searchParams.get("note") || "";
+const locationName = searchParams.get("locationName") || "";
+const estimatedDuration = searchParams.get("estimatedDuration") 
+  ? parseInt(searchParams.get("estimatedDuration") as string, 10)
+  : undefined;
+
+// Przekazuję parametry do komponentu, ale nie przekierowuję gdy brak notatki
+---
+
+<Layout title="Propozycje terminów spotkań">
+  <ProposalsPage client:load initialNote={note} initialLocation={locationName} initialDuration={estimatedDuration} />
+</Layout> 

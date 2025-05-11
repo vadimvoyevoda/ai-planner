@@ -281,3 +281,83 @@ export interface ApiErrorResponseDto {
 export interface ApiSuccessResponseDto {
   message: string;
 }
+
+// Meeting Proposals View types
+export interface MeetingProposalRequest {
+  note: string;
+  preferredDateTime?: string; // ISO8601
+  categoryId?: string;
+  estimatedDuration?: number;
+  title?: string;
+  description?: string;
+  locationName?: string;
+}
+
+export interface MeetingProposal {
+  startTime: string; // ISO8601
+  endTime: string; // ISO8601
+  title: string;
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  suggestedAttire: string;
+  locationName: string;
+  aiGeneratedNotes: string;
+  originalNote: string;
+}
+
+export interface MeetingProposalsResponse {
+  proposals: MeetingProposal[];
+}
+
+export interface MeetingAcceptRequest {
+  startTime: string; // ISO8601
+  endTime: string; // ISO8601
+  title: string;
+  description: string;
+  categoryId: string;
+  locationName: string;
+  aiGeneratedNotes: string;
+  originalNote: string;
+}
+
+export interface MeetingAcceptResponse {
+  id: string;
+  title: string;
+  description: string;
+  category: {
+    id: string;
+    name: string;
+    suggestedAttire: string;
+  };
+  startTime: string; // ISO8601
+  endTime: string; // ISO8601
+  locationName: string;
+  aiGenerated: boolean;
+  originalNote: string;
+  aiGeneratedNotes: string;
+  createdAt: string; // ISO8601
+  conflicts?: MeetingConflict[];
+}
+
+export interface MeetingConflict {
+  id: string;
+  title: string;
+  startTime: string; // ISO8601
+  endTime: string; // ISO8601
+}
+
+export interface ApiError {
+  message: string;
+  errors?: Record<string, string[]>;
+}
+
+export interface ProposalPageState {
+  status: "loading" | "error" | "success" | "initial";
+  proposals: MeetingProposal[];
+  selectedProposal: MeetingProposal | null;
+  error: ApiError | null;
+  conflicts: MeetingConflict[] | null;
+  showConfirmDialog: boolean;
+  confirmationType: "cancel-generation" | "accept-with-conflicts" | null;
+}

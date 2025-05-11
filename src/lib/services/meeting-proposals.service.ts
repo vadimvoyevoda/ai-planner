@@ -1,50 +1,78 @@
-import { analyze_note } from "./ai.service";
+import { OpenAIService } from "./ai/openai.service";
 import type {
   MeetingProposalCommand,
   MeetingProposalResponseDto,
-  NoteAnalysisResponseDto,
   MeetingPreferencesEntity,
   MeetingCategoryEntity,
   MeetingDistribution,
   TimeOfDay,
 } from "../../types";
-import { supabaseClient } from "../../db/supabase.client";
+import { getSupabaseClient } from "../../db/supabase.client";
 import crypto from "crypto";
 
+// Wydzielenie typu NoteAnalysisResponseDto
+export interface NoteAnalysisResponseDto {
+  suggested_title: string;
+  suggested_description?: string;
+  estimated_duration?: number;
+  category?: string;
+  priority?: string;
+  participants_count?: number;
+  analyzed_note?: string;
+}
+
+// Inicjalizacja serwisu OpenAI
+const openAIService = new OpenAIService(import.meta.env.PLATFORM_OPENAI_KEY, {
+  defaultModel: "gpt-4",
+  timeout: 60000,
+});
+
 /**
- * Generates meeting proposals based on user preferences and AI analysis
- * @param user_id - The ID of the user requesting proposals
- * @param command - The command containing the note, location, and optional duration
- * @returns A response with meeting proposals
+ * Analizuje notatkę przy użyciu OpenAI API
+ * @param note - Tekst notatki do analizy
+ * @returns Analiza notatki
  */
-export async function generate_proposals(
-  user_id: string,
-  command: MeetingProposalCommand
-): Promise<MeetingProposalResponseDto> {
+async function analyze_note(note: string): Promise<NoteAnalysisResponseDto> {
   try {
-    // Pobranie preferencji użytkownika
-    const user_preferences = await get_user_preferences(user_id);
+    openAIService.setSystemMessage(`Jesteś asystentem do analizy spotkań. Przeanalizuj notatkę i wyodrębnij następujące informacje:
+      1. Sugerowany tytuł spotkania
+      2. Sugerowany opis spotkania
+      3. Szacowany czas trwania w minutach
+      4. Kategoria spotkania
+      5. Priorytet spotkania
+      6. Szacowana liczba uczestników
+      7. Analiza notatki`);
 
-    // Analiza notatki przez AI
-    const note_analysis = await analyze_note(command.note);
+    openAIService.setResponseFormat({
+      type: "json_schema",
+      json_schema: {
+        type: "object",
+        properties: {
+          suggested_title: { type: "string" },
+          suggested_description: { type: "string" },
+          estimated_duration: { type: "integer" },
+          category: { type: "string" },
+          priority: { type: "string" },
+          participants_count: { type: "integer" },
+          analyzed_note: { type: "string" },
+        },
+      },
+    });
 
-    // Pobranie kategorii spotkań
-    const categories = await get_meeting_categories();
-
-    // Dopasowanie kategorii z analizy AI do istniejących kategorii
-    const matched_category = match_category(note_analysis, categories);
-
-    // Generowanie propozycji terminów
-    const proposals = await generate_meeting_times(user_id, command, note_analysis, user_preferences, matched_category);
-
-    // Zwrócenie sformatowanej odpowiedzi
-    return {
-      proposals,
-    };
+    openAIService.addUserMessage(note);
+    const completion = await openAIService.createChatCompletion();
+    return openAIService.parseResponse<NoteAnalysisResponseDto>(completion);
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("Error generating meeting proposals:", error);
-    throw error;
+    console.error("Error analyzing note with OpenAI:", error);
+    // Fallback w przypadku błędu
+    return {
+      suggested_title: "Nowe spotkanie",
+      suggested_description: note,
+      estimated_duration: 60,
+      category: "Ogólne",
+      priority: "średni",
+      analyzed_note: note,
+    };
   }
 }
 
@@ -53,7 +81,11 @@ export async function generate_proposals(
  * @param user_id - The ID of the user
  */
 async function get_user_preferences(user_id: string): Promise<MeetingPreferencesEntity> {
-  const { data, error } = await supabaseClient.from("meeting_preferences").select("*").eq("user_id", user_id).single();
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+  const { data, error } = await supabase.from("meeting_preferences").select("*").eq("user_id", user_id).single();
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -76,7 +108,11 @@ async function get_user_preferences(user_id: string): Promise<MeetingPreferences
  * Retrieves meeting categories from the database
  */
 async function get_meeting_categories(): Promise<MeetingCategoryEntity[]> {
-  const { data, error } = await supabaseClient.from("meeting_categories").select("*");
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+  const { data, error } = await supabase.from("meeting_categories").select("*");
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -130,7 +166,11 @@ async function generate_meeting_times(
   category: MeetingCategoryEntity
 ) {
   // Get user's existing meetings to avoid conflicts
-  const { data: existing_meetings } = await supabaseClient
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error("Supabase client not available");
+  }
+  const { data: existing_meetings } = await supabase
     .from("meetings")
     .select("start_time, end_time")
     .eq("user_id", user_id)
@@ -333,5 +373,42 @@ function adjustForConflicts(
       adjustForConflicts(proposedDate, duration, existingMeetings, minBreakMinutes);
       break;
     }
+  }
+}
+
+/**
+ * Generates meeting proposals based on user preferences and AI analysis
+ * @param user_id - The ID of the user requesting proposals
+ * @param command - The command containing the note, location, and optional duration
+ * @returns A response with meeting proposals
+ */
+export async function generate_proposals(
+  user_id: string,
+  command: MeetingProposalCommand
+): Promise<MeetingProposalResponseDto> {
+  try {
+    // Pobranie preferencji użytkownika
+    const user_preferences = await get_user_preferences(user_id);
+
+    // Analiza notatki przez AI
+    const note_analysis = await analyze_note(command.note);
+
+    // Pobranie kategorii spotkań
+    const categories = await get_meeting_categories();
+
+    // Dopasowanie kategorii z analizy AI do istniejących kategorii
+    const matched_category = match_category(note_analysis, categories);
+
+    // Generowanie propozycji terminów
+    const proposals = await generate_meeting_times(user_id, command, note_analysis, user_preferences, matched_category);
+
+    // Zwrócenie sformatowanej odpowiedzi
+    return {
+      proposals,
+    };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Error generating meeting proposals:", error);
+    throw error;
   }
 }
