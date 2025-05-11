@@ -1,0 +1,22 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import RegisterForm from "@/components/auth/RegisterForm";
+
+// Tymczasowa funkcja - zostanie zastąpiona prawdziwą implementacją
+const handleRegister = async (email: string, password: string, confirmPassword: string) => {
+  console.log("Register attempt:", { email, password, confirmPassword });
+};
+---
+
+<Layout title="Rejestracja | My Schedule">
+  <div class="min-h-screen bg-gray-50">
+    <div class="container mx-auto px-4 py-8 h-screen flex items-center justify-center">
+      <div class="w-full max-w-md">
+        <RegisterForm
+          client:load
+          onSubmit={handleRegister}
+        />
+      </div>
+    </div>
+  </div>
+</Layout> 

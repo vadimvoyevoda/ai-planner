@@ -78,15 +78,21 @@ Następujące funkcjonalności NIE są częścią MVP:
 
 ### Rejestracja i logowanie
 
-#### US-001: Rejestracja nowego użytkownika
-Jako nowy użytkownik chcę zarejestrować się w aplikacji, aby móc korzystać z jej funkcjonalności.
+#### US-001: Bezpieczny dostęp i uwierzytelnianie
+- Tytuł: Bezpieczny dostęp
+- Opis: Jako użytkownik chcę mieć możliwość rejestracji i logowania się do systemu w sposób zapewniający bezpieczeństwo moich danych.
+- Kryteria akceptacji:
+  - Logowanie i rejestracja odbywają się na dedykowanych stronach.
+  - Logowanie wymaga podania adresu email i hasła.
+  - Rejestracja wymaga podania adresu email, hasła i potwierdzenia hasła.
+  - Użytkownik MOŻE korzystać z generowania planu spotkań "ad-hoc" bez logowania się do systemu (US-007, US-008).
+  - System weryfikuje unikalność adresu email
+  - Użytkownik NIE MOŻE korzystać z funkcji Kolekcji bez logowania się do systemu (US-009, US-010, US-011, US-012).
+  - Użytkownik może logować się do systemu poprzez przycisk w prawym górnym rogu.
+  - Użytkownik może się wylogować z systemu poprzez przycisk w prawym górnym rogu w głównym @Layout.astro.
+  - Nie korzystamy z zewnętrznych serwisów logowania (np. Google, GitHub).
+  - Odzyskiwanie hasła powinno być możliwe (US-003).
 
-Kryteria akceptacji:
-- Użytkownik może utworzyć konto podając email, imię, nazwisko i hasło
-- System weryfikuje unikalność adresu email
-- System wymaga hasła o odpowiedniej sile
-- Po rejestracji użytkownik otrzymuje email z potwierdzeniem
-- Użytkownik może zalogować się na utworzone konto
 
 #### US-002: Logowanie do aplikacji
 Jako zarejestrowany użytkownik chcę zalogować się do aplikacji, aby uzyskać dostęp do mojego konta i danych.
@@ -94,7 +100,6 @@ Jako zarejestrowany użytkownik chcę zalogować się do aplikacji, aby uzyskać
 Kryteria akceptacji:
 - Użytkownik może zalogować się używając adresu email i hasła
 - System weryfikuje poprawność danych logowania
-- System blokuje konto po kilku nieudanych próbach logowania
 - Po zalogowaniu użytkownik jest przekierowany do dashboardu
 
 #### US-003: Resetowanie hasła
@@ -195,23 +200,11 @@ Kryteria akceptacji:
 Jako użytkownik chcę wyeksportować zaplanowane spotkanie do Google Calendar, aby mieć synchronizację z moim głównym kalendarzem.
 
 Kryteria akceptacji:
-- Użytkownik może wyeksportować wybrane spotkanie do Google Calendar
-- System prosi o autoryzację dostępu do Google Calendar (jeśli potrzebne)
-- System potwierdza pomyślny eksport
-- Spotkanie pojawia się w Google Calendar użytkownika
-
-#### US-014: Eksport wszystkich spotkań do Google Calendar
-Jako użytkownik chcę wyeksportować wszystkie zaplanowane spotkania do Google Calendar, aby mieć pełną synchronizację.
-
-Kryteria akceptacji:
-- Użytkownik może wyeksportować wszystkie spotkania jednym kliknięciem
-- System prosi o autoryzację dostępu do Google Calendar (jeśli potrzebne)
-- System potwierdza pomyślny eksport
-- Wszystkie spotkania pojawiają się w Google Calendar użytkownika
+- Użytkownik może ściągnąć wybrane spotkanie jako plik kalendarza w formacie .ics.
 
 ### Scenariusze alternatywne i skrajne
 
-#### US-015: Obsługa konfliktów terminów
+#### US-014: Obsługa konfliktów terminów
 Jako użytkownik chcę, aby system informował mnie o konfliktach terminów, gdy próbuję zaplanować nakładające się spotkania.
 
 Kryteria akceptacji:
@@ -219,14 +212,14 @@ Kryteria akceptacji:
 - System wyświetla powiadomienie o konflikcie
 - Użytkownik może zdecydować, czy kontynuować planowanie mimo konfliktu
 
-#### US-016: Obsługa niedostępnych terminów
+#### US-015: Obsługa niedostępnych terminów
 Jako użytkownik chcę, aby system respektował moje dni niedostępne przy proponowaniu terminów spotkań.
 
 Kryteria akceptacji:
 - System nie proponuje terminów w dniach oznaczonych jako niedostępne
 - Jeśli wszystkie możliwe terminy przypadają na dni niedostępne, system informuje o tym użytkownika
 
-#### US-017: Obsługa błędów AI
+#### US-016: Obsługa błędów AI
 Jako użytkownik chcę otrzymać informację, gdy AI nie może wygenerować propozycji na podstawie mojej notatki.
 
 Kryteria akceptacji:
@@ -234,13 +227,23 @@ Kryteria akceptacji:
 - System sugeruje, jak poprawić notatkę, aby AI mogło ją przetworzyć
 - Użytkownik może edytować notatkę i spróbować ponownie
 
-#### US-018: Wylogowanie z aplikacji
+#### US-017: Wylogowanie z aplikacji
 Jako użytkownik chcę wylogować się z aplikacji, aby zabezpieczyć swoje konto.
 
 Kryteria akceptacji:
 - Użytkownik może wylogować się z aplikacji
 - Po wylogowaniu użytkownik jest przekierowany do strony logowania
 - Po wylogowaniu dane użytkownika nie są dostępne bez ponownego logowania
+
+#### US-018: Kolekcje spotkań
+- Tytuł: Kolekcje spotkań
+- Opis: Jako użytkownik chcę móc zapisywać i usuwać spotkania, aby szybko wykorzystywać sprawdzone rozwiązania w różnych projektach.
+- Kryteria akceptacji:
+  - Użytkownik może zapisać aktualny zestaw reguł (US-001) jako kolekcję (nazwa, opis, reguły).
+  - Użytkownik może aktualizować kolekcję.
+  - Użytkownik może usunąć kolekcję.
+  - Użytkownik może przywrócić kolekcję do poprzedniej wersji (pending changes).
+  - Funkcjonalność kolekcji nie jest dostępna bez logowania się do systemu (US-004).
 
 ## 6. Metryki sukcesu
 
