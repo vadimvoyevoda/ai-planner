@@ -150,10 +150,7 @@ export default function ProposalsPage({ initialNote = "" }: ProposalsPageProps) 
       );
 
       // Wysłanie zapytania do OpenAI
-      const payload = openai.buildRequestPayload();
-      console.log("OpenAI Request Payload:", JSON.stringify(payload, null, 2));
       const completion = await openai.createChatCompletion();
-      console.log("OpenAI Response:", JSON.stringify(completion, null, 2));
       const result = openai.parseResponse<{
         proposals: {
           category: string;

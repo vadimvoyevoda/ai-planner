@@ -9,7 +9,7 @@ export const prerender = false;
 const { searchParams } = Astro.url;
 const note = searchParams.get("note") || "";
 const locationName = searchParams.get("locationName") || "";
-const estimatedDuration = searchParams.get("estimatedDuration") 
+const estimatedDuration = searchParams.get("estimatedDuration")
   ? parseInt(searchParams.get("estimatedDuration") as string, 10)
   : undefined;
 
@@ -18,4 +18,4 @@ const estimatedDuration = searchParams.get("estimatedDuration")
 
 <Layout title="Propozycje terminów spotkań">
   <ProposalsPage client:load initialNote={note} initialLocation={locationName} initialDuration={estimatedDuration} />
-</Layout> 
+</Layout>
