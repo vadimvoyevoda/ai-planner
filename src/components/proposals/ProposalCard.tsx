@@ -1,7 +1,7 @@
 import type { MeetingProposal, MeetingConflict } from "../../types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDateTime, calculateDurationMinutes } from "../../lib/utils";
+import { calculateDurationMinutes } from "../../lib/utils";
 import ConflictBadge from "./ConflictBadge";
 
 interface ProposalCardProps {
@@ -21,58 +21,57 @@ export default function ProposalCard({
   isSelected = false,
   isLoading = false,
 }: ProposalCardProps) {
-  // Formatowanie daty i czasu
-  const formattedDate = formatDateTime(proposal.startTime, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
-  const formattedTime = formatDateTime(proposal.startTime, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Obliczanie czasu trwania
-  const durationMinutes = calculateDurationMinutes(proposal.startTime, proposal.endTime);
+  const duration = calculateDurationMinutes(proposal.startTime, proposal.endTime);
+  const startDate = new Date(proposal.startTime);
+  const endDate = new Date(proposal.endTime);
 
   return (
-    <Card className={`min-w-[300px] max-w-sm flex-shrink-0 relative ${isSelected ? "ring-2 ring-blue-500" : ""}`}>
-      {/* Badge konfliktu, jeśli istnieje */}
-      {hasConflicts && <ConflictBadge conflicts={conflicts} />}
-
+    <Card className={`w-96 ${isSelected ? "ring-2 ring-primary" : ""}`}>
       <CardHeader>
         <CardTitle className="text-lg">{proposal.title}</CardTitle>
-        <div className="text-sm text-gray-500">
-          {formattedDate}, {formattedTime}
+        <div className="text-sm text-muted-foreground">
+          <p>{proposal.description}</p>
+          <p className="mt-2">
+            <strong>Strój:</strong> {proposal.suggestedAttire}
+          </p>
         </div>
       </CardHeader>
-
       <CardContent>
         <div className="space-y-2">
           <div>
-            <span className="font-medium">Kategoria:</span> {proposal.categoryName}
+            <strong>Data i czas:</strong>{" "}
+            {startDate.toLocaleDateString("pl-PL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+            {", "}
+            {startDate.toLocaleTimeString("pl-PL", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {" - "}
+            {endDate.toLocaleTimeString("pl-PL", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </div>
           <div>
-            <span className="font-medium">Miejsce:</span> {proposal.locationName}
+            <strong>Czas trwania:</strong> {duration} minut
           </div>
           <div>
-            <span className="font-medium">Czas trwania:</span> {durationMinutes} min
+            <strong>Miejsce:</strong> {proposal.locationName}
           </div>
-          <div>
-            <span className="font-medium">Sugerowany strój:</span> {proposal.suggestedAttire}
-          </div>
-          {proposal.description && (
-            <div className="mt-4 pt-2 border-t border-gray-100">
-              <p className="text-sm text-gray-600">{proposal.description}</p>
+          {hasConflicts && conflicts && conflicts.length > 0 && (
+            <div className="mt-4">
+              <ConflictBadge conflicts={conflicts} />
             </div>
           )}
         </div>
       </CardContent>
-
       <CardFooter>
-        <Button onClick={() => onAccept(proposal)} className="w-full" disabled={isLoading}>
-          Zaakceptuj
+        <Button className="w-full" onClick={() => onAccept(proposal)} disabled={isLoading}>
+          {isLoading ? "Akceptowanie..." : "Zaakceptuj termin"}
         </Button>
       </CardFooter>
     </Card>

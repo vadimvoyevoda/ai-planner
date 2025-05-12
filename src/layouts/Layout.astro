@@ -1,24 +1,132 @@
 ---
-import "../styles/global.css";
+import "@/styles/global.css";
+import { createServerSupabase } from "@/lib/supabase";
+import LogoutButton from "@/components/auth/LogoutButton";
+import { Toaster } from "sonner";
+import { ViewTransitions } from "astro:transitions";
+import Providers from "@/components/providers/Providers";
 
 interface Props {
-  title?: string;
+  title: string;
 }
 
-const { title = "10x Astro Starter" } = Astro.props;
+const { title } = Astro.props;
+
+const supabase = createServerSupabase(Astro.cookies);
+const {
+  data: { session },
+  error: sessionError,
+} = await supabase.auth.getSession();
+
+console.log("[Layout] Auth check:", {
+  path: Astro.url.pathname,
+  hasSession: !!session,
+  error: sessionError?.message,
+  user: session?.user?.email,
+});
+
+// Redirect to login if there's no session and we're not already on the login page
+const isLoginPage = Astro.url.pathname === "/auth/login";
+if (!session && !isLoginPage) {
+  console.log("[Layout] No session found, redirecting to login");
+  return Astro.redirect("/auth/login");
+}
+
+// Get user details if session exists
+const user = session?.user;
+
+// Aktywna ścieżka
+const pathname = new URL(Astro.request.url).pathname;
+
+// Lista zakładek nawigacji
+const navItems = [
+  { name: "Dashboard", href: "/" },
+  { name: "Zaplanuj spotkanie", href: "/proposals" },
+  { name: "Ustawienia", href: "/settings" },
+];
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="pl" class="h-full">
   <head>
     <meta charset="UTF-8" />
+    <meta name="description" content="AI Planner - Twój inteligentny asystent planowania" />
     <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+    <title>{title ? `${title} | AI Planner` : "AI Planner"}</title>
+    <ViewTransitions />
   </head>
-  <body>
-    <slot />
+  <body class="h-full">
+    <Providers client:load>
+      <div class="min-h-screen flex flex-col bg-gray-50">
+        <Toaster client:load richColors position="top-right" />
+        {
+          session && (
+            <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+              <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                  <a href="/" class="flex items-center space-x-2 group">
+                    <img src="/favicon.svg" alt="Logo" class="w-8 h-8 group-hover:scale-105 transition-transform" />
+                    <h1 class="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                      AI Planner
+                    </h1>
+                  </a>
+                  <nav class="hidden md:flex items-center space-x-1">
+                    {navItems.map((item) => (
+                      <a
+                        href={item.href}
+                        class:list={[
+                          "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                          pathname === item.href
+                            ? "bg-indigo-50 text-indigo-600"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        ]}
+                      >
+                        {item.name}
+                      </a>
+                    ))}
+                  </nav>
+                </div>
+                <div class="flex items-center space-x-4">
+                  <div class="hidden md:flex items-center">
+                    <span class="text-sm text-gray-600 mr-2">{user?.email}</span>
+                  </div>
+                  <LogoutButton client:load />
+                </div>
+              </div>
+
+              {/* Mobile navigation */}
+              <div class="md:hidden border-t border-gray-200">
+                <nav class="flex">
+                  {navItems.map((item) => (
+                    <a
+                      href={item.href}
+                      class:list={[
+                        "flex-1 px-3 py-2 text-center text-sm font-medium transition-colors",
+                        pathname === item.href
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      ]}
+                    >
+                      {item.name}
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            </header>
+          )
+        }
+        <main class="flex-1 container mx-auto px-4 py-8">
+          <slot />
+        </main>
+        <footer class="bg-white border-t border-gray-200 py-4">
+          <div class="container mx-auto px-4 text-center text-sm text-gray-600">
+            © {new Date().getFullYear()} AI Planner. Wszystkie prawa zastrzeżone.
+          </div>
+        </footer>
+      </div>
+    </Providers>
   </body>
 </html>
 

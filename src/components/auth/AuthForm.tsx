@@ -8,7 +8,7 @@ interface AuthFormProps {
   submitText: string;
   isLoading?: boolean;
   error?: string | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void> | void;
   footer?: React.ReactNode;
 }
 
@@ -21,13 +21,20 @@ export default function AuthForm({
   onSubmit,
   footer,
 }: AuthFormProps) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (onSubmit) {
+      await onSubmit(e);
+    }
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl text-center">{title}</CardTitle>
       </CardHeader>
 
-      <form onSubmit={onSubmit}>
+      <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">{error}</div>}
 

@@ -1,0 +1,19 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.PUBLIC_SUPABASE_KEY
+);
+
+if (Astro.request.url) {
+  const requestUrl = new URL(Astro.request.url);
+  const code = requestUrl.searchParams.get("code");
+
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code);
+    return Astro.redirect("/dashboard");
+  }
+}
+
+// If no code or error in exchange, redirect to login
+return Astro.redirect("/auth/login"); 

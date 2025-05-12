@@ -1,0 +1,61 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import PreferencesForm from "@/components/settings/PreferencesForm";
+import { createServerSupabase } from "@/lib/supabase";
+
+export const prerender = false;
+
+let preferences = null;
+let error = null;
+let session = null;
+
+try {
+  const supabase = createServerSupabase(Astro.cookies);
+  const sessionResponse = await supabase.auth.getSession();
+  session = sessionResponse.data.session;
+
+  // Przekieruj niezalogowanych użytkowników
+  if (!session) {
+    return Astro.redirect("/auth/login");
+  }
+
+  // Pobierz aktualne preferencje użytkownika
+  const { data, error: preferencesError } = await supabase
+    .from("meeting_preferences")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .single();
+
+  if (preferencesError) {
+    error = "Nie udało się pobrać preferencji użytkownika.";
+  } else {
+    preferences = data;
+  }
+} catch (e) {
+  error = "Wystąpił nieoczekiwany błąd.";
+  console.error("Error in settings page:", e);
+}
+---
+
+<Layout title="Ustawienia | AI Planner">
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+      <h1 class="text-3xl font-bold mb-8">Ustawienia</h1>
+      <div class="bg-white rounded-lg shadow-md p-6">
+        {error ? (
+          <div class="text-red-500 text-center p-4">
+            <p>{error}</p>
+            <button 
+              class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onclick="window.location.reload()"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
+        ) : (
+          <PreferencesForm client:load initialPreferences={preferences} />
+        )}
+      </div>
+    </div>
+  </div>
+</Layout> 

@@ -1,8 +1,60 @@
 ---
-import Welcome from "../components/Welcome.astro";
-import Layout from "../layouts/Layout.astro";
+import Layout from "@/layouts/Layout.astro";
+import { createServerSupabase } from "@/lib/supabase";
+import { transformSupabaseMeeting } from "@/types";
+import { UpcomingMeetingsSection } from "@/components/UpcomingMeetingsSection";
+
+const supabase = createServerSupabase(Astro.cookies);
+const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+console.log("Server-side session:", {
+  hasSession: !!session,
+  userId: session?.user?.id,
+});
+
+// Fetch upcoming meetings
+const { data: upcomingMeetings } = await supabase
+  .from("meetings")
+  .select("*, meeting_categories(id, name, suggested_attire)")
+  .eq("user_id", session?.user?.id)
+  .is("deleted_at", null)
+  .gte("start_time", new Date().toISOString())
+  .order("start_time", { ascending: true })
+  .limit(5);
+
+console.log("Raw meetings data:", upcomingMeetings);
+
+const meetings = (upcomingMeetings || []).map(transformSupabaseMeeting);
+
+console.log("Transformed meetings:", meetings);
 ---
 
-<Layout>
-  <Welcome />
+<Layout title="Dashboard | My Schedule">
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold mb-2">Witaj, {session?.user?.email}!</h1>
+      <p class="text-gray-600">Oto przegląd Twoich nadchodzących aktywności.</p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <UpcomingMeetingsSection client:only="react" initialMeetings={meetings} />
+
+      <!-- Szybkie akcje -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Szybkie akcje</h2>
+        <div class="space-y-4">
+          <a href="/proposals" class="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <h3 class="font-medium">Zaplanuj spotkanie</h3>
+            <p class="text-sm text-gray-600">Stwórz nową propozycję spotkania</p>
+          </a>
+          <a href="/settings" class="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <h3 class="font-medium">Ustawienia</h3>
+            <p class="text-sm text-gray-600">Zarządzaj swoimi preferencjami</p>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 </Layout>

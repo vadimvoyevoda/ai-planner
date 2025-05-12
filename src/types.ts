@@ -5,8 +5,8 @@ export type DbTables = Database["public"]["Tables"];
 export type DbEnums = Database["public"]["Enums"];
 
 // Utility types
-export type TimeOfDay = DbEnums["time_of_day"];
-export type MeetingDistribution = DbEnums["meeting_distribution"];
+export type TimeOfDay = "rano" | "dzień" | "wieczór";
+export type MeetingDistribution = "rozłożone" | "skondensowane";
 export type StatsPeriodType = DbEnums["stats_period_type"];
 
 // Base entity types that map directly to database tables
@@ -22,8 +22,8 @@ export interface ProfileEntity {
 export interface MeetingPreferencesEntity {
   id: string;
   user_id: string;
-  preferred_distribution: MeetingDistribution;
-  preferred_times_of_day: TimeOfDay[];
+  preferred_distribution: "rozłożone" | "skondensowane";
+  preferred_times_of_day: ("rano" | "dzień" | "wieczór")[];
   min_break_minutes: number | null;
   unavailable_weekdays: number[];
 }
@@ -98,6 +98,13 @@ export interface MeetingPreferencesResponseDto {
 export interface MeetingPreferencesUpdateCommand {
   preferred_distribution: MeetingDistribution;
   preferred_times_of_day: TimeOfDay[];
+  min_break_minutes: number | null;
+  unavailable_weekdays: number[];
+}
+
+export interface MeetingPreferencesUpdateDto {
+  preferred_distribution: "rozłożone" | "skondensowane";
+  preferred_times_of_day: ("rano" | "dzień" | "wieczór")[];
   min_break_minutes: number | null;
   unavailable_weekdays: number[];
 }
@@ -360,4 +367,116 @@ export interface ProposalPageState {
   conflicts: MeetingConflict[] | null;
   showConfirmDialog: boolean;
   confirmationType: "cancel-generation" | "accept-with-conflicts" | null;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description: string | null;
+  category: {
+    id: string;
+    name: string;
+    suggested_attire: string | null;
+  };
+  startTime: string;
+  endTime: string;
+  locationName: string | null;
+  aiGenerated: boolean;
+  originalNote: string | null;
+  aiGeneratedNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+}
+
+export function transformSupabaseMeeting(
+  meeting: Database["public"]["Tables"]["meetings"]["Row"] & {
+    meeting_categories?: Database["public"]["Tables"]["meeting_categories"]["Row"] | null;
+  }
+): Meeting {
+  return {
+    id: meeting.id,
+    title: meeting.title,
+    description: meeting.description,
+    category: {
+      id: meeting.meeting_categories?.id || "",
+      name: meeting.meeting_categories?.name || "",
+      suggested_attire: meeting.meeting_categories?.suggested_attire || null,
+    },
+    startTime: meeting.start_time,
+    endTime: meeting.end_time || meeting.start_time,
+    locationName: meeting.location || null,
+    aiGenerated: meeting.ai_generated,
+    originalNote: null, // These fields don't exist in the database yet
+    aiGeneratedNotes: meeting.ai_generated_notes,
+    createdAt: meeting.created_at,
+    updatedAt: meeting.updated_at || meeting.created_at,
+    userId: meeting.user_id,
+  };
+}
+
+export interface MeetingFilters {
+  searchTerm: string;
+  category: string;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+}
+
+export interface PaginationState {
+  currentPage: number;
+  totalPages: number;
+  itemsPerPage: number;
+  totalItems: number;
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  error: string | null;
+  pagination?: PaginationState;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+  preferences?: UserPreferences;
+}
+
+export interface UserPreferences {
+  theme: "light" | "dark" | "system";
+  notifications: {
+    email: boolean;
+    push: boolean;
+    reminders: {
+      enabled: boolean;
+      beforeMinutes: number;
+    };
+  };
+  timezone: string;
+  dateFormat: string;
+  timeFormat: "12h" | "24h";
+}
+
+export interface Note {
+  id: string;
+  meeting_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
+export interface Suggestion {
+  id: string;
+  meeting_id: string;
+  content: string;
+  type: "time" | "location" | "agenda" | "attendees";
+  created_at: string;
+  user_id: string;
+  status: "pending" | "accepted" | "rejected";
 }

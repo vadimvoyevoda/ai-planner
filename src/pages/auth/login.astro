@@ -1,22 +1,26 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import LoginForm from "@/components/auth/LoginForm";
+import { createServerSupabase } from "@/lib/supabase";
 
-// Tymczasowa funkcja - zostanie zastąpiona prawdziwą implementacją
-const handleLogin = async (email: string, password: string) => {
-  console.log("Login attempt:", { email, password });
-};
+const supabase = createServerSupabase(Astro.cookies);
+const {
+  data: { session },
+  error,
+} = await supabase.auth.getSession();
+
+// Only redirect if we have a valid session without errors
+if (session && !error && session.user) {
+  return Astro.redirect("/");
+}
 ---
 
 <Layout title="Logowanie | My Schedule">
   <div class="min-h-screen bg-gray-50">
     <div class="container mx-auto px-4 py-8 h-screen flex items-center justify-center">
       <div class="w-full max-w-md">
-        <LoginForm
-          client:load
-          onSubmit={handleLogin}
-        />
+        <LoginForm client:load />
       </div>
     </div>
   </div>
-</Layout> 
+</Layout>

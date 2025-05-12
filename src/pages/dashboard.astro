@@ -1,0 +1,45 @@
+---
+import { DashboardLayout } from "@/layouts/DashboardLayout";
+import { MeetingNoteForm } from "@/components/MeetingNoteForm";
+import { MeetingsList } from "@/components/MeetingsList";
+import { DashboardProvider } from "@/components/DashboardProvider";
+import { MeetingFilters } from "@/components/MeetingFilters";
+import { createServerSupabase } from "@/lib/supabase";
+
+const supabase = createServerSupabase(Astro.cookies);
+const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+// Fetch initial meetings
+const { data: initialMeetings } = await supabase
+  .from("meetings")
+  .select("*, meeting_categories(id, name, suggested_attire)")
+  .eq("user_id", session?.user?.id)
+  .is("deleted_at", null)
+  .order("start_time", { ascending: true });
+---
+
+<DashboardLayout client:load>
+  <DashboardProvider client:load initialMeetings={initialMeetings || []}>
+    <div class="space-y-8">
+      <section>
+        <h2 class="text-3xl font-bold tracking-tight">Welcome back!</h2>
+        <p class="text-muted-foreground mt-2">Here's an overview of your schedule and tasks.</p>
+      </section>
+
+      <section>
+        <h3 class="text-xl font-semibold mb-4">Quick Add Meeting/Note</h3>
+        <MeetingNoteForm client:load />
+      </section>
+
+      <section>
+        <h3 class="text-xl font-semibold mb-4">Upcoming Meetings</h3>
+        <MeetingFilters client:load />
+        <div class="mt-4">
+          <MeetingsList client:load />
+        </div>
+      </section>
+    </div>
+  </DashboardProvider>
+</DashboardLayout>

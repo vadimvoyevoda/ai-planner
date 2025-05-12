@@ -7,7 +7,7 @@ import type {
   MeetingDistribution,
   TimeOfDay,
 } from "../../types";
-import { getSupabaseClient } from "../../db/supabase.client";
+import { createClientSupabase } from "@/lib/supabase";
 import crypto from "crypto";
 
 // Wydzielenie typu NoteAnalysisResponseDto
@@ -81,10 +81,7 @@ async function analyze_note(note: string): Promise<NoteAnalysisResponseDto> {
  * @param user_id - The ID of the user
  */
 async function get_user_preferences(user_id: string): Promise<MeetingPreferencesEntity> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    throw new Error("Supabase client not available");
-  }
+  const supabase = createClientSupabase();
   const { data, error } = await supabase.from("meeting_preferences").select("*").eq("user_id", user_id).single();
 
   if (error) {
@@ -92,10 +89,10 @@ async function get_user_preferences(user_id: string): Promise<MeetingPreferences
     console.error("Error fetching user preferences:", error);
     // Return default preferences if not found
     return {
-      id: crypto.createHash("md5").update(`${user_id}-default`).digest("hex"),
+      id: crypto.randomUUID(),
       user_id,
-      preferred_distribution: "roz\u0142o\u017Cone" as MeetingDistribution, // rozłożone with unicode escapes
-      preferred_times_of_day: ["rano", "dzie\u0144"] as TimeOfDay[], // dzień with unicode escape
+      preferred_distribution: "rozłożone" as MeetingDistribution,
+      preferred_times_of_day: ["rano", "dzień", "wieczór"] as TimeOfDay[],
       min_break_minutes: 30,
       unavailable_weekdays: [0, 6], // Sunday and Saturday
     };
@@ -108,10 +105,7 @@ async function get_user_preferences(user_id: string): Promise<MeetingPreferences
  * Retrieves meeting categories from the database
  */
 async function get_meeting_categories(): Promise<MeetingCategoryEntity[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    throw new Error("Supabase client not available");
-  }
+  const supabase = createClientSupabase();
   const { data, error } = await supabase.from("meeting_categories").select("*");
 
   if (error) {
@@ -166,7 +160,7 @@ async function generate_meeting_times(
   category: MeetingCategoryEntity
 ) {
   // Get user's existing meetings to avoid conflicts
-  const supabase = getSupabaseClient();
+  const supabase = createClientSupabase();
   if (!supabase) {
     throw new Error("Supabase client not available");
   }
@@ -202,7 +196,7 @@ async function generate_meeting_times(
 
   // Apply distribution preference
   let selectedDays: Date[] = [];
-  const distributed = "roz\u0142o\u017Cone" as MeetingDistribution; // rozłożone with unicode escapes
+  const distributed = "rozłożone" as MeetingDistribution;
 
   if (user_preferences.preferred_distribution === distributed) {
     // For distributed preferences, select days spread out across the available ones
@@ -324,8 +318,8 @@ function setPreferredTime(date: Date, preferred_times: TimeOfDay[]): void {
 
   // Pick a time based on preferences
   const morning = "rano" as TimeOfDay;
-  const afternoon = "dzie\u0144" as TimeOfDay; // dzień with unicode escape
-  const evening = "wiecz\u00f3r" as TimeOfDay; // wieczór with unicode escape
+  const afternoon = "dzień" as TimeOfDay;
+  const evening = "wieczór" as TimeOfDay;
 
   if (preferred_times.includes(morning)) {
     date.setHours(9, 0, 0, 0);
@@ -410,5 +404,64 @@ export async function generate_proposals(
     // eslint-disable-next-line no-console
     console.error("Error generating meeting proposals:", error);
     throw error;
+  }
+}
+
+/**
+ * Updates proposal statistics for a user
+ * @param user_id - The ID of the user
+ */
+export async function update_proposal_stats(user_id: string) {
+  try {
+    const supabase = createClientSupabase();
+    if (!supabase) {
+      console.error("Supabase client not available");
+      return;
+    }
+
+    // Get current date for period calculations
+    const today = new Date();
+    const currentMonth = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}-01`;
+
+    // Check if entry exists for current month
+    const { data, error } = await supabase
+      .from("proposal_stats")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("period_type", "month")
+      .eq("period_start_date", currentMonth)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 is "no rows returned" error
+      // eslint-disable-next-line no-console
+      console.error("Error checking proposal stats:", error);
+      return;
+    }
+
+    if (data) {
+      // Update existing record
+      await supabase
+        .from("proposal_stats")
+        .update({
+          total_generations: data.total_generations + 1,
+          last_updated: new Date().toISOString(),
+        })
+        .eq("id", data.id);
+    } else {
+      // Create new record
+      await supabase.from("proposal_stats").insert({
+        user_id,
+        period_type: "month",
+        period_start_date: currentMonth,
+        total_generations: 1,
+        accepted_proposals: 0,
+        last_updated: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Error updating proposal stats:", error);
+    // Non-critical functionality, so we don't throw an error that would affect the main response
   }
 }

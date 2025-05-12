@@ -1,82 +1,158 @@
 import type { APIRoute } from "astro";
-import type { MeetingAcceptRequest, MeetingAcceptResponse } from "../../../types";
+import { z } from "zod";
+import { createServerSupabase } from "@/lib/supabase";
+import { transformSupabaseMeeting } from "@/types";
+import type { MeetingAcceptRequest } from "@/types";
 
-export const prerender = false;
+const bodySchema = z.object({
+  startTime: z.string(),
+  endTime: z.string(),
+  title: z.string(),
+  description: z.string(),
+  categoryId: z.string(),
+  locationName: z.string(),
+  aiGeneratedNotes: z.string(),
+  originalNote: z.string(),
+});
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const body = (await request.json()) as MeetingAcceptRequest;
+    const supabase = createServerSupabase(cookies);
 
-    // Walidacja danych wejściowych
-    if (!body.startTime || !body.endTime || !body.title || !body.categoryId) {
-      return new Response(JSON.stringify({ message: "Brakujące wymagane pola" }), {
+    // Validate session
+    const {
+      data: { session },
+      error: authError,
+    } = await supabase.auth.getSession();
+    if (authError || !session) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await request.json();
+    const validatedBody = bodySchema.parse(body) as MeetingAcceptRequest;
+
+    // Get category details
+    const { data: category, error: categoryError } = await supabase
+      .from("meeting_categories")
+      .select("*")
+      .eq("id", validatedBody.categoryId)
+      .single();
+
+    if (categoryError || !category) {
+      console.error("Category error:", categoryError);
+      return new Response(JSON.stringify({ error: "Invalid meeting category" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Symulacja wykrycia konfliktów w 50% przypadków
-    const hasConflicts = Math.random() > 0.5;
+    // Check for conflicts
+    const { data: conflicts, error: conflictsError } = await supabase
+      .from("meetings")
+      .select("id, title, start_time, end_time")
+      .eq("user_id", session.user.id)
+      .is("deleted_at", null)
+      .or(
+        `and(start_time.lte.${validatedBody.endTime},end_time.gte.${validatedBody.startTime}),` +
+          `and(start_time.gte.${validatedBody.startTime},start_time.lt.${validatedBody.endTime}),` +
+          `and(end_time.gt.${validatedBody.startTime},end_time.lte.${validatedBody.endTime})`
+      );
 
-    // Mock odpowiedzi
-    const response: MeetingAcceptResponse = {
-      id: crypto.randomUUID(),
-      title: body.title,
-      description: body.description,
-      category: {
-        id: body.categoryId,
-        name: getCategoryName(body.categoryId),
-        suggestedAttire: getSuggestedAttire(body.categoryId),
-      },
-      startTime: body.startTime,
-      endTime: body.endTime,
-      locationName: body.locationName,
-      aiGenerated: true,
-      originalNote: body.originalNote,
-      aiGeneratedNotes: body.aiGeneratedNotes,
-      createdAt: new Date().toISOString(),
-      // Symulowane konflikty
-      conflicts: hasConflicts
-        ? [
-            {
-              id: crypto.randomUUID(),
-              title: "Istniejące spotkanie",
-              startTime: body.startTime,
-              endTime: new Date(new Date(body.startTime).getTime() + 30 * 60000).toISOString(),
-            },
-          ]
-        : undefined,
+    if (conflictsError) {
+      console.error("Conflicts check error:", conflictsError);
+      return new Response(JSON.stringify({ error: "Error checking for conflicts" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Prepare meeting data
+    const meetingData = {
+      user_id: session.user.id,
+      title: validatedBody.title,
+      description: validatedBody.description,
+      category_id: validatedBody.categoryId,
+      start_time: validatedBody.startTime,
+      end_time: validatedBody.endTime,
+      location_name: validatedBody.locationName,
+      ai_generated: true,
+      original_note: validatedBody.originalNote,
+      ai_generated_notes: validatedBody.aiGeneratedNotes,
     };
 
-    return new Response(JSON.stringify(response), { status: 200, headers: { "Content-Type": "application/json" } });
+    // Save the meeting
+    const { data: meeting, error: insertError } = await supabase
+      .from("meetings")
+      .insert(meetingData)
+      .select("*, meeting_categories(id, name, suggested_attire)")
+      .single();
+
+    if (insertError) {
+      console.error("Meeting insert error:", insertError);
+      return new Response(
+        JSON.stringify({
+          error: "Error saving meeting",
+          details: insertError.message,
+          code: insertError.code,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!meeting) {
+      console.error("No meeting data returned after insert");
+      return new Response(JSON.stringify({ error: "Error saving meeting - no data returned" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Transform the meeting data
+    const transformedMeeting = transformSupabaseMeeting(meeting);
+
+    // Add conflicts to the response
+    const response = {
+      ...transformedMeeting,
+      conflicts: conflicts?.map((conflict) => ({
+        id: conflict.id,
+        title: conflict.title,
+        startTime: conflict.start_time,
+        endTime: conflict.end_time,
+      })),
+    };
+
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Redirect": "/proposals",
+      },
+    });
   } catch (error) {
     console.error("Error accepting meeting proposal:", error);
-    return new Response(JSON.stringify({ message: "Wystąpił błąd podczas akceptacji propozycji spotkania" }), {
+
+    if (error instanceof z.ZodError) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request data",
+          details: error.errors,
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 };
-
-// Pomocnicze funkcje do generowania danych
-function getCategoryName(categoryId: string): string {
-  const categories: Record<string, string> = {
-    "1": "Biznes",
-    "2": "Networking",
-    "3": "Konsultacja",
-    "4": "Prywatne",
-  };
-
-  return categories[categoryId] || "Inne";
-}
-
-function getSuggestedAttire(categoryId: string): string {
-  const attires: Record<string, string> = {
-    "1": "Formalny",
-    "2": "Smart casual",
-    "3": "Casual",
-    "4": "Elegancki",
-  };
-
-  return attires[categoryId] || "Casual";
-}

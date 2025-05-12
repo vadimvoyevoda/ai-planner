@@ -1,13 +1,10 @@
-import { clsx, type ClassValue } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Formatuje datę i czas według podanego formatu
- */
 export function formatDateTime(isoString: string, options: Intl.DateTimeFormatOptions = {}): string {
   try {
     return new Date(isoString).toLocaleDateString("pl-PL", options);
@@ -17,9 +14,6 @@ export function formatDateTime(isoString: string, options: Intl.DateTimeFormatOp
   }
 }
 
-/**
- * Oblicza czas trwania w minutach między dwiema datami
- */
 export function calculateDurationMinutes(startIsoString: string, endIsoString: string): number {
   try {
     const start = new Date(startIsoString);
@@ -32,7 +26,33 @@ export function calculateDurationMinutes(startIsoString: string, endIsoString: s
   }
 }
 
-// Sprawdza, czy wartość jest nullem lub undefind
-export function isNullOrUndefined(value: unknown): value is null | undefined {
-  return value === null || value === undefined;
+export function formatDateRange(start: Date, end: Date): string {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  if (startDate.toDateString() === endDate.toDateString()) {
+    return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()} - ${endDate.toLocaleTimeString()}`;
+  }
+
+  return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()} - ${endDate.toLocaleDateString()} ${endDate.toLocaleTimeString()}`;
+}
+
+export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
+export function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }

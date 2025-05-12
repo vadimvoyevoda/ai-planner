@@ -2,36 +2,94 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AuthForm from "./AuthForm";
+import { z } from "zod";
+
+const registerSchema = z
+  .object({
+    email: z.string().email("Nieprawidłowy adres email"),
+    password: z.string().min(8, "Hasło musi mieć minimum 8 znaków"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Hasła nie są identyczne",
+    path: ["confirmPassword"],
+  });
 
 interface RegisterFormProps {
   isLoading?: boolean;
   error?: string | null;
-  onSubmit: (email: string, password: string, confirmPassword: string) => void;
 }
 
-export default function RegisterForm({ isLoading = false, error = null, onSubmit }: RegisterFormProps) {
+export default function RegisterForm({ isLoading = false, error = null }: RegisterFormProps) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
-  const [passwordError, setPasswordError] = React.useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = React.useState<string | null>(error);
 
-  const validatePasswords = () => {
-    if (password !== confirmPassword) {
-      setPasswordError("Hasła nie są identyczne");
-      return false;
+  const validateField = (field: "email" | "password" | "confirmPassword", value: string) => {
+    try {
+      if (field === "confirmPassword") {
+        registerSchema.parse({ email, password, confirmPassword: value });
+      } else {
+        registerSchema.shape[field].parse(value);
+      }
+      setValidationErrors((prev) => ({ ...prev, [field]: "" }));
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const fieldError = err.errors.find((e) => e.path[0] === field);
+        if (fieldError) {
+          setValidationErrors((prev) => ({ ...prev, [field]: fieldError.message }));
+        }
+      }
     }
-    if (password.length < 8) {
-      setPasswordError("Hasło musi mieć co najmniej 8 znaków");
-      return false;
-    }
-    setPasswordError(null);
-    return true;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (validatePasswords()) {
-      onSubmit(email, password, confirmPassword);
+    setSubmitError(null);
+
+    try {
+      const formData = { email, password, confirmPassword };
+      registerSchema.parse(formData);
+
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 400) {
+          setSubmitError(data.error || "Nieprawidłowe dane rejestracji");
+        } else if (response.status === 429) {
+          setSubmitError("Zbyt wiele prób rejestracji. Spróbuj ponownie później.");
+        } else {
+          setSubmitError(data.error || "Wystąpił błąd podczas rejestracji");
+        }
+        return;
+      }
+
+      alert(data.message || "Sprawdź swoją skrzynkę email aby potwierdzić rejestrację");
+      window.location.href = "/auth/login";
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const errors = err.errors.reduce(
+          (acc, curr) => ({
+            ...acc,
+            [curr.path[0]]: curr.message,
+          }),
+          {}
+        );
+        setValidationErrors(errors);
+      } else {
+        setSubmitError("Wystąpił błąd podczas rejestracji");
+      }
     }
   };
 
@@ -40,7 +98,7 @@ export default function RegisterForm({ isLoading = false, error = null, onSubmit
       title="Rejestracja"
       submitText="Zarejestruj się"
       isLoading={isLoading}
-      error={error || passwordError}
+      error={submitError}
       onSubmit={handleSubmit}
       footer={
         <div>
@@ -57,11 +115,21 @@ export default function RegisterForm({ isLoading = false, error = null, onSubmit
           id="email"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            validateField("email", e.target.value);
+          }}
           placeholder="twoj@email.com"
           required
           autoComplete="email"
+          aria-invalid={!!validationErrors.email}
+          aria-errormessage="email-error"
         />
+        {validationErrors.email && (
+          <p id="email-error" className="text-sm text-red-500">
+            {validationErrors.email}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -72,12 +140,21 @@ export default function RegisterForm({ isLoading = false, error = null, onSubmit
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
-            if (confirmPassword) validatePasswords();
+            validateField("password", e.target.value);
+            if (confirmPassword) {
+              validateField("confirmPassword", confirmPassword);
+            }
           }}
           required
           autoComplete="new-password"
+          aria-invalid={!!validationErrors.password}
+          aria-errormessage="password-error"
         />
-        <p className="text-sm text-gray-500">Minimum 8 znaków</p>
+        {validationErrors.password && (
+          <p id="password-error" className="text-sm text-red-500">
+            {validationErrors.password}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -88,11 +165,18 @@ export default function RegisterForm({ isLoading = false, error = null, onSubmit
           value={confirmPassword}
           onChange={(e) => {
             setConfirmPassword(e.target.value);
-            if (password) validatePasswords();
+            validateField("confirmPassword", e.target.value);
           }}
           required
           autoComplete="new-password"
+          aria-invalid={!!validationErrors.confirmPassword}
+          aria-errormessage="confirm-password-error"
         />
+        {validationErrors.confirmPassword && (
+          <p id="confirm-password-error" className="text-sm text-red-500">
+            {validationErrors.confirmPassword}
+          </p>
+        )}
       </div>
     </AuthForm>
   );

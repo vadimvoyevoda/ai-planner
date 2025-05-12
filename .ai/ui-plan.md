@@ -97,21 +97,8 @@ Aplikacja wykorzystuje podejście "mobile-first", dostosowując układ do różn
   - Autouzupełnianie dla miejsc
 
 ### Ustawienia i preferencje
-#### Ustawienia profilu
-- **Ścieżka**: `/settings/profile`
-- **Główny cel**: Zarządzanie danymi osobowymi
-- **Kluczowe informacje**: Dane użytkownika
-- **Kluczowe komponenty**:
-  - Formularz edycji danych
-  - Formularz zmiany hasła
-  - Przyciski zapisywania zmian
-- **UX/dostępność/bezpieczeństwo**:
-  - Natychmiastowa walidacja
-  - Komunikaty o zapisaniu
-  - Wymaganie obecnego hasła przy zmianach
-
 #### Preferencje spotkań
-- **Ścieżka**: `/settings/preferences`
+- **Ścieżka**: `/settings`
 - **Główny cel**: Konfiguracja preferencji dla AI
 - **Kluczowe informacje**: Preferencje spotkań
 - **Kluczowe komponenty**:
@@ -144,7 +131,7 @@ Aplikacja wykorzystuje podejście "mobile-first", dostosowując układ do różn
 
 ### Nowy użytkownik
 1. Rejestracja konta (`/register`)
-2. Automatyczne przekierowanie do formularza preferencji (`/settings/preferences`)
+2. Automatyczne przekierowanie do formularza preferencji (`/settings`)
 3. Wypełnienie preferencji spotkań
 4. Przekierowanie do dashboardu (`/`)
 
