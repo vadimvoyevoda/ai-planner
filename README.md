@@ -27,6 +27,11 @@ The application is primarily designed for:
 - Tailwind 4 for styling
 - Shadcn/ui for accessible UI components
 
+### Testing
+- Vitest/Jest for unit testing
+- React Testing Library for component testing
+- Playwright/Cypress for E2E testing
+
 ### Backend
 - Supabase as a comprehensive backend solution
 - PostgreSQL database

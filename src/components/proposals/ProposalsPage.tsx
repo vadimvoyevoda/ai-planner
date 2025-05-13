@@ -151,12 +151,18 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
                 disabled={isLoading}
                 required
                 ref={noteRef}
+                data-test-id="meeting-note-input"
               />
             </div>
           </CardContent>
 
           <CardFooter>
-            <Button type="submit" disabled={!note.trim() || isLoading} className="w-full">
+            <Button
+              type="submit"
+              disabled={!note.trim() || isLoading}
+              className="w-full"
+              data-test-id="propose-meeting-button"
+            >
               {isLoading ? "Generowanie propozycji..." : "Zaproponuj termin"}
             </Button>
           </CardFooter>
@@ -164,10 +170,10 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       </Card>
 
       {error && <ErrorState error={error} onRetry={handleRetry} />}
-      {isLoading && <LoadingState />}
+      {isLoading && <LoadingState data-test-id="loading-proposals" />}
 
       {proposals.length > 0 && !isLoading && (
-        <div ref={proposalsRef} className="mt-8">
+        <div ref={proposalsRef} className="mt-8" data-test-id="proposals-container">
           <h2 className="text-2xl font-semibold mb-6">Propozycje terminów</h2>
           <div className="flex flex-nowrap gap-6 overflow-x-auto pb-4">
             {proposals.map((proposal, index) => (
@@ -177,6 +183,7 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
                 onAccept={handleAcceptProposal}
                 isSelected={selectedProposal?.startTime === proposal.startTime}
                 isLoading={isLoading && selectedProposal?.startTime === proposal.startTime}
+                data-test-id={`proposal-card-${index}`}
               />
             ))}
           </div>
@@ -184,11 +191,14 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       )}
 
       {showConfirmDialog && conflicts && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          data-test-id="confirm-dialog"
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold mb-4">Wykryto konflikty</h3>
             <p className="mb-4">W wybranym terminie masz już zaplanowane inne spotkania:</p>
-            <ul className="list-disc pl-5 mb-4">
+            <ul className="list-disc pl-5 mb-4" data-test-id="conflicts-list">
               {conflicts.map((conflict) => (
                 <li key={conflict.id} className="mb-2">
                   {conflict.title} ({new Date(conflict.startTime).toLocaleString()})
@@ -196,10 +206,12 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
               ))}
             </ul>
             <div className="flex justify-end gap-4">
-              <Button variant="outline" onClick={handleCloseConfirmDialog}>
+              <Button variant="outline" onClick={handleCloseConfirmDialog} data-test-id="cancel-conflicts-button">
                 Anuluj
               </Button>
-              <Button onClick={handleConfirmWithConflicts}>Zaakceptuj mimo konfliktów</Button>
+              <Button onClick={handleConfirmWithConflicts} data-test-id="accept-with-conflicts-button">
+                Zaakceptuj mimo konfliktów
+              </Button>
             </div>
           </div>
         </div>

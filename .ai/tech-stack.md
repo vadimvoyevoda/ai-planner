@@ -15,5 +15,11 @@ AI - Komunikacja z modelami przez usługę OpenAI platform (platform.openai.com)
 - Dostęp do szerokiej gamy modeli (OpenAI, Anthropic, Google i wiele innych), które pozwolą nam znaleźć rozwiązanie zapewniające wysoką efektywność i niskie koszta
 
 CI/CD i Hosting:
-- Github Actions do tworzenia pipeline’ów CI/CD
+- Github Actions do tworzenia pipeline'ów CI/CD
 - DigitalOcean do hostowania aplikacji za pośrednictwem obrazu docker
+
+Testy:
+- Vitest/Jest oraz React Testing Library do testów jednostkowych
+- Playwright/Cypress do testów end-to-end (E2E)
+- Lighthouse, k6 do testów wydajnościowych
+- Axe, Pa11y do testów dostępności
