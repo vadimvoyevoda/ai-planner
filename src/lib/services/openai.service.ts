@@ -3,21 +3,81 @@ import OpenAI from "openai";
 export class OpenAIService {
   private openai: OpenAI;
   private messages: { role: "system" | "user" | "assistant"; content: string }[];
+  private isTestEnvironment: boolean;
 
   constructor() {
     const apiKey = import.meta.env.PLATFORM_OPENAI_KEY;
-    console.log("OpenAI Service - API Key available:", !!apiKey);
+    // Sprawdź, czy jesteśmy w środowisku testowym lub czy wymuszono mock
+    this.isTestEnvironment =
+      import.meta.env.MODE === "test" || process.env.NODE_ENV === "test" || import.meta.env.USE_MOCK_OPENAI === "true";
 
-    if (!apiKey) {
-      throw new Error("OpenAI API key is not configured. Please check your environment variables.");
+    console.log("OpenAI Service - API Key available:", !!apiKey);
+    console.log("OpenAI Service - Test environment:", this.isTestEnvironment);
+    console.log("OpenAI Service - USE_MOCK_OPENAI:", import.meta.env.USE_MOCK_OPENAI);
+
+    if (this.isTestEnvironment) {
+      console.log("Using mock OpenAI implementation for tests");
+      this.openai = this.createMockOpenAI() as unknown as OpenAI;
+    } else {
+      if (!apiKey) {
+        throw new Error("OpenAI API key is not configured. Please check your environment variables.");
+      }
+
+      this.openai = new OpenAI({
+        apiKey,
+        baseURL: "https://api.openai.com/v1",
+        dangerouslyAllowBrowser: true,
+      });
     }
 
-    this.openai = new OpenAI({
-      apiKey,
-      baseURL: "https://api.openai.com/v1",
-      dangerouslyAllowBrowser: true,
-    });
     this.messages = [];
+  }
+
+  private createMockOpenAI() {
+    // Mock implementacja OpenAI dla testów
+    return {
+      chat: {
+        completions: {
+          create: async () => {
+            console.log("MOCK: Creating fake chat completion");
+            // Symuluj opóźnienie, aby zachowanie było bardziej realistyczne
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Zwróć zmockowaną odpowiedź z propozycjami spotkań
+            return {
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      proposals: [
+                        {
+                          category: "Spotkanie biznesowe",
+                          startTime: new Date(Date.now() + 86400000).toISOString(), // jutro
+                          endTime: new Date(Date.now() + 86400000 + 3600000).toISOString(), // jutro + 1h
+                          title: "Mock spotkanie biznesowe",
+                          description: "Testowe spotkanie biznesowe wygenerowane przez mock",
+                          locationName: "Biuro testowe, ul. Testowa 123",
+                          suggestedAttire: "Strój biznesowy",
+                        },
+                        {
+                          category: "Przerwa kawowa",
+                          startTime: new Date(Date.now() + 172800000).toISOString(), // pojutrze
+                          endTime: new Date(Date.now() + 172800000 + 1800000).toISOString(), // pojutrze + 30min
+                          title: "Mock przerwa kawowa",
+                          description: "Testowa przerwa kawowa wygenerowana przez mock",
+                          locationName: "Kawiarnia Testowa, ul. Kawowa 42",
+                          suggestedAttire: "Strój casualowy",
+                        },
+                      ],
+                    }),
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    };
   }
 
   setSystemMessage(content: string) {

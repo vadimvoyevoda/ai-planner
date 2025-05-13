@@ -11,6 +11,7 @@ interface ProposalCardProps {
   conflicts?: MeetingConflict[];
   isSelected?: boolean;
   isLoading?: boolean;
+  "data-test-id"?: string;
 }
 
 export default function ProposalCard({
@@ -20,13 +21,14 @@ export default function ProposalCard({
   conflicts = [],
   isSelected = false,
   isLoading = false,
+  "data-test-id": dataTestId,
 }: ProposalCardProps) {
   const duration = calculateDurationMinutes(proposal.startTime, proposal.endTime);
   const startDate = new Date(proposal.startTime);
   const endDate = new Date(proposal.endTime);
 
   return (
-    <Card className={`w-96 ${isSelected ? "ring-2 ring-primary" : ""}`}>
+    <Card className={`w-96 ${isSelected ? "ring-2 ring-primary" : ""}`} data-test-id={dataTestId}>
       <CardHeader>
         <CardTitle className="text-lg">{proposal.title}</CardTitle>
         <div className="text-sm text-muted-foreground">
@@ -70,7 +72,12 @@ export default function ProposalCard({
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={() => onAccept(proposal)} disabled={isLoading}>
+        <Button
+          className="w-full"
+          onClick={() => onAccept(proposal)}
+          disabled={isLoading}
+          data-test-id="accept-proposal-button"
+        >
           {isLoading ? "Akceptowanie..." : "Zaakceptuj termin"}
         </Button>
       </CardFooter>

@@ -3,6 +3,16 @@ import { createServerSupabase } from "@/lib/supabase";
 import { AUTH_TOKEN_COOKIE } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
+// Define the expected structure for context.locals
+declare global {
+  namespace App {
+    interface Locals {
+      user?: User;
+      session?: any;
+    }
+  }
+}
+
 interface AstroWithLocals {
   locals: {
     user?: User;
@@ -73,6 +83,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.user = session.user;
   context.locals.session = session;
 
-  console.log("[Middleware] Valid session found for user:", session.user.email);
+  // Using optional chaining to safely access user.email
+  console.log("[Middleware] Valid session found for user:", session.user?.email || "unknown email");
   return next();
 });
