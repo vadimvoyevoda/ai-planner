@@ -1,8 +1,24 @@
-import { chromium, FullConfig } from "@playwright/test";
+import { chromium } from "@playwright/test";
+import type { FullConfig } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../src/db/database.types";
+
+// Disable Vitest/Jest matchers conflict when running Playwright tests
+if (process.env.SKIP_VITEST_HOOK === "true") {
+  // Intercept Symbol($$jest-matchers-object) property issue
+  const originalObjectDefineProperty = Object.defineProperty;
+  Object.defineProperty = function(obj, prop, descriptor) {
+    // Skip redefining the problematic jest-matchers-object symbol
+    if (typeof prop === "symbol" && 
+        prop.toString().includes("jest-matchers-object")) {
+      console.log("Skipping redefinition of Symbol($$jest-matchers-object)");
+      return obj;
+    }
+    return originalObjectDefineProperty(obj, prop, descriptor);
+  };
+}
 
 // No need to load dotenv here - it's loaded by dotenv-cli in npm scripts
 

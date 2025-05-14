@@ -28,19 +28,30 @@ Replace the placeholder values with your actual Supabase credentials and test us
 npm install
 ```
 
-## Running Tests
+## Running E2E Tests
 
-To run all E2E tests:
+There are several ways to run E2E tests:
 
-```bash
-npm run test:e2e
-```
+1. **Running a specific test file** (recommended):
+   ```bash
+   npm run test:e2e:specific
+   ```
+   This runs the main meeting proposal test, which is the most stable approach.
 
-To run tests with UI mode:
+2. **Running all E2E tests** (may have conflicts with Vitest):
+   ```bash
+   npm run test:e2e
+   ```
 
-```bash
-npm run test:e2e:ui
-```
+3. **Running with UI mode** (for debugging):
+   ```bash
+   npm run test:e2e:ui
+   ```
+
+4. **Running a custom test file**:
+   ```bash
+   npm run test:e2e:file -- e2e/your-test-file.spec.ts
+   ```
 
 ## Authentication
 
@@ -62,6 +73,18 @@ After tests, the database is cleaned up by deleting test data. This is configure
 
 ## Troubleshooting
 
-If you encounter the error `TypeError: Cannot redefine property: Symbol($$jest-matchers-object)`, this is due to a conflict between Vitest and Playwright's test libraries. The current configuration includes fixes for this issue.
+### Vitest and Playwright Conflict
 
-Make sure you're running E2E tests with the provided npm scripts and not mixing them with Vitest tests in the same process. 
+If you encounter errors like:
+```
+TypeError: Cannot redefine property: Symbol($$jest-matchers-object)
+```
+
+This is due to a conflict between Vitest and Playwright's test libraries. To resolve this:
+
+1. Always run specific test files directly instead of the entire test suite
+2. Use the `test:e2e:specific` script which is configured to avoid these conflicts
+3. If you need to run a different test file, use:
+   ```bash
+   npm run test:e2e:file -- path/to/your/test/file.spec.ts
+   ``` 

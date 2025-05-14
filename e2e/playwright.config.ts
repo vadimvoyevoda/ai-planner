@@ -1,3 +1,28 @@
+/**
+ * Prevent Symbol($$jest-matchers-object) conflicts between Vitest and Playwright
+ */
+try {
+  // Get the original defineProperty method
+  const originalDefineProperty = Object.defineProperty;
+
+  // Override it to filter out attempts to redefine the problematic symbol
+  Object.defineProperty = function(obj: any, prop: string | symbol, descriptor: PropertyDescriptor) {
+    // Skip problematic symbols that cause the conflicts
+    if (
+      typeof prop === 'symbol' && 
+      String(prop).includes('jest-matchers-object')
+    ) {
+      console.log(`Skipping problematic symbol redefinition: ${String(prop)}`);
+      return obj;
+    }
+    
+    // Proceed with other properties
+    return originalDefineProperty(obj, prop, descriptor);
+  };
+} catch (error) {
+  console.warn("Failed to patch Object.defineProperty:", error);
+}
+
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
 
