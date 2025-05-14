@@ -25,9 +25,7 @@ jobs:
         run: npm ci --legacy-peer-deps
       
       - name: Run linting
-        run: |
-          echo "Skipping lint step to unblock CI/CD"
-          exit 0
+        run: npm run lint
   
   # Unit testing job - verifies individual components function correctly
   unit-test:
@@ -86,8 +84,19 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium # Only install Chromium browser for tests
       
+      - name: Start application server
+        run: npm run e2e:dev & 
+        # The & at the end runs the server in the background
+
+      - name: Wait for server to start
+        run: npx wait-on http://localhost:3000 -t 60000
+        
       - name: Run E2E tests
         run: npm run test:e2e
+        
+      - name: Shutdown application server
+        if: always() # Run even if tests fail
+        run: pkill -f "astro dev" || true # The || true ensures this step doesn't fail if no process is found
       
       - name: Upload Playwright report
         if: always() # Upload report regardless of test result
