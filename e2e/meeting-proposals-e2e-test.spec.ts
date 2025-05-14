@@ -14,8 +14,25 @@ const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL as string;
 const SUPABASE_PUBLIC_KEY = process.env.PUBLIC_SUPABASE_KEY as string;
 const E2E_USERNAME = process.env.E2E_USERNAME as string;
 const E2E_PASSWORD = process.env.E2E_PASSWORD as string;
-// ID projektu Supabase - opcjonalne, domyślnie "127"
-const SUPABASE_PROJECT_ID = process.env.PUBLIC_SUPABASE_PROJECT_ID || "127";
+
+// Funkcja do wyodrębnienia project ID z URL Supabase
+function extractProjectIdFromUrl(url: string): string {
+  try {
+    // URL będzie w formacie https://<project-id>.supabase.co
+    const matches = url.match(/https:\/\/([^.]+)\.supabase\.co/);
+    if (matches && matches[1]) {
+      console.log(`Extracted project ID from URL: ${matches[1]}`);
+      return matches[1];
+    }
+  } catch (error) {
+    console.error("Error extracting project ID from URL:", error);
+  }
+  // Jeśli nie udało się wyodrębnić, użyj domyślnej wartości
+  return "127";
+}
+
+// ID projektu Supabase - wyodrębnione z URL lub użyte z env, lub domyślne "127"
+const SUPABASE_PROJECT_ID = process.env.PUBLIC_SUPABASE_PROJECT_ID || extractProjectIdFromUrl(SUPABASE_URL) || "127";
 
 // Verify required environment variables are set
 if (!SUPABASE_URL || !SUPABASE_PUBLIC_KEY || !E2E_USERNAME || !E2E_PASSWORD) {
@@ -39,21 +56,63 @@ test.beforeEach(async ({ page }) => {
 
   // Pobierz dane sesji po zalogowaniu
   const { data: sessionData } = await supabase.auth.getSession();
+  
+  // Znajdź nazwę tokenu ciasteczka z Supabase
+  // @ts-ignore - Dostęp do wewnętrznych właściwości SupabaseAuthClient
+  const supabaseAuth = supabase.auth as any;
+  // @ts-ignore - Dostęp do memoryStorage
+  let supaCookieName: string | null = null;
+
+  // Dynamicznie znajdź klucz w memoryStorage pasujący do wzorca sb-*-auth-token
+  if (supabaseAuth?.memoryStorage) {
+    const authTokenPattern = /^sb-.*-auth-token$/;
+    const memoryKeys = Object.keys(supabaseAuth.memoryStorage);
+    
+    for (const key of memoryKeys) {
+      if (authTokenPattern.test(key)) {
+        supaCookieName = key;
+        break;
+      }
+    }
+  }
+  
+  console.log("Supabase cookie name found:", supaCookieName);
+  
   // Najpierw przejdź na stronę główną
   await page.goto(`${BASE_URL}/`);
 
   // Ustawienie tokenów sesji w local storage
   if (sessionData?.session) {
-    const cookieName = `sb-${SUPABASE_PROJECT_ID}-auth-token`;
+    // Sprawdź, czy strona ma już ustawione ciasteczko auth-token
+    const cookies = await page.context().cookies();
+    const authCookiePattern = /^sb-(.+)-auth-token$/;
+    const existingAuthCookie = cookies.find(cookie => authCookiePattern.test(cookie.name));
+    
+    // Użyj nazwy ciasteczka, które jest już ustawione, jeśli istnieje
+    // W przeciwnym razie użyj domyślnej wartości z env lub "127"
+    let cookieName: string = "";
+    
+    if (supaCookieName) {
+      // Priorytetowo użyj nazwy z SupabaseAuthClient
+      cookieName = supaCookieName;
+      console.log(`Using Supabase auth cookie name: ${cookieName}`);
+    } else if (existingAuthCookie) {
+      cookieName = existingAuthCookie.name;
+      console.log(`Found existing auth cookie: ${cookieName}`);
+    } else {
+      cookieName = `sb-${SUPABASE_PROJECT_ID}-auth-token`;
+      console.log(`Using default auth cookie name: ${cookieName}`);
+    }
+    
     // Ustawienie ciasteczka dynamicznie wygenerowanego
     await page.context().addCookies([
       {
         name: cookieName,
         value: JSON.stringify({
-          access_token: sessionData.session.access_token,
-          refresh_token: sessionData.session.refresh_token,
-          expires_at: sessionData.session.expires_at,
-          user: sessionData.session.user, // Include the full user object in the cookie
+          access_token: sessionData.session!.access_token,
+          refresh_token: sessionData.session!.refresh_token,
+          expires_at: sessionData.session!.expires_at,
+          user: sessionData.session!.user, // Include the full user object in the cookie
         }),
         domain: "localhost",
         path: "/",
@@ -61,7 +120,7 @@ test.beforeEach(async ({ page }) => {
     ]);
 
     // Log the user data being set for debugging
-    console.log("User data being set:", sessionData.session.user?.email || "No email found in session");
+    console.log("User data being set:", sessionData.session?.user?.email || "No email found in session");
     console.log(`Set auth token in cookies (${cookieName})`);
 
     // Odśwież stronę, aby zastosować tokeny

@@ -65,6 +65,7 @@ jobs:
       # Set environment variables from secrets for Supabase integration
       PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
       PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
+      PUBLIC_SUPABASE_PROJECT_ID: ${{ secrets.PUBLIC_SUPABASE_PROJECT_ID }}
       E2E_USERNAME_ID: ${{ secrets.E2E_USERNAME_ID }}
       E2E_USERNAME: ${{ secrets.E2E_USERNAME }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
