@@ -234,7 +234,7 @@ ${categoriesText}
 
     // Aktualizacja statystyk - tylko w trybie produkcyjnym
     if (!isTest) {
-      await update_proposal_stats(user.id);
+      await update_proposal_stats(user.id, cookies);
     } else {
       console.log("API: Skipping update_proposal_stats in test mode");
     }

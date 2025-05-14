@@ -26,7 +26,8 @@ try {
     .eq("user_id", session.user.id)
     .single();
 
-  if (preferencesError) {
+  if (preferencesError && preferencesError.code !== "PGRST116") {
+    // PGRST116 to kod błędu "nie znaleziono", co jest normalne dla nowego użytkownika
     error = "Nie udało się pobrać preferencji użytkownika.";
   } else {
     preferences = data;

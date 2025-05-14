@@ -175,16 +175,18 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       {proposals.length > 0 && !isLoading && (
         <div ref={proposalsRef} className="mt-8" data-test-id="proposals-container">
           <h2 className="text-2xl font-semibold mb-6">Propozycje terminów</h2>
-          <div className="flex flex-nowrap gap-6 overflow-x-auto pb-4">
+          <div className="flex flex-col sm:flex-row sm:flex-nowrap gap-6 sm:overflow-x-auto sm:pb-4">
             {proposals.map((proposal, index) => (
-              <ProposalCard
-                key={index}
-                proposal={proposal}
-                onAccept={handleAcceptProposal}
-                isSelected={selectedProposal?.startTime === proposal.startTime}
-                isLoading={isLoading && selectedProposal?.startTime === proposal.startTime}
-                data-test-id={`proposal-card-${index}`}
-              />
+              <div className="mb-6 sm:mb-0 w-full sm:w-auto" key={index}>
+                <ProposalCard
+                  key={`proposal-${index}`}
+                  proposal={proposal}
+                  onAccept={handleAcceptProposal}
+                  isSelected={selectedProposal?.startTime === proposal.startTime}
+                  isLoading={isLoading && selectedProposal?.startTime === proposal.startTime}
+                  data-test-id={`proposal-card-${index}`}
+                />
+              </div>
             ))}
           </div>
         </div>

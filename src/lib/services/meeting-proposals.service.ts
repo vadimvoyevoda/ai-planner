@@ -7,8 +7,9 @@ import type {
   MeetingDistribution,
   TimeOfDay,
 } from "../../types";
-import { createClientSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase";
 import crypto from "crypto";
+import type { AstroCookies } from "astro";
 
 // Wydzielenie typu NoteAnalysisResponseDto
 export interface NoteAnalysisResponseDto {
@@ -79,9 +80,10 @@ async function analyze_note(note: string): Promise<NoteAnalysisResponseDto> {
 /**
  * Retrieves user preferences for meetings from the database
  * @param user_id - The ID of the user
+ * @param cookies - Astro cookies for server supabase client
  */
-async function get_user_preferences(user_id: string): Promise<MeetingPreferencesEntity> {
-  const supabase = createClientSupabase();
+async function get_user_preferences(user_id: string, cookies: AstroCookies): Promise<MeetingPreferencesEntity> {
+  const supabase = createServerSupabase(cookies);
   const { data, error } = await supabase.from("meeting_preferences").select("*").eq("user_id", user_id).single();
 
   if (error) {
@@ -103,9 +105,10 @@ async function get_user_preferences(user_id: string): Promise<MeetingPreferences
 
 /**
  * Retrieves meeting categories from the database
+ * @param cookies - Astro cookies for server supabase client
  */
-async function get_meeting_categories(): Promise<MeetingCategoryEntity[]> {
-  const supabase = createClientSupabase();
+async function get_meeting_categories(cookies: AstroCookies): Promise<MeetingCategoryEntity[]> {
+  const supabase = createServerSupabase(cookies);
   const { data, error } = await supabase.from("meeting_categories").select("*");
 
   if (error) {
@@ -151,19 +154,18 @@ function match_category(
  * @param note_analysis - The AI analysis results
  * @param user_preferences - The user preferences
  * @param category - The matched meeting category
+ * @param cookies - Astro cookies for server supabase client
  */
 async function generate_meeting_times(
   user_id: string,
   command: MeetingProposalCommand,
   note_analysis: NoteAnalysisResponseDto,
   user_preferences: MeetingPreferencesEntity,
-  category: MeetingCategoryEntity
+  category: MeetingCategoryEntity,
+  cookies: AstroCookies
 ) {
   // Get user's existing meetings to avoid conflicts
-  const supabase = createClientSupabase();
-  if (!supabase) {
-    throw new Error("Supabase client not available");
-  }
+  const supabase = createServerSupabase(cookies);
   const { data: existing_meetings } = await supabase
     .from("meetings")
     .select("start_time, end_time")
@@ -374,27 +376,29 @@ function adjustForConflicts(
  * Generates meeting proposals based on user preferences and AI analysis
  * @param user_id - The ID of the user requesting proposals
  * @param command - The command containing the note, location, and optional duration
+ * @param cookies - Astro cookies for server supabase client
  * @returns A response with meeting proposals
  */
 export async function generate_proposals(
   user_id: string,
-  command: MeetingProposalCommand
+  command: MeetingProposalCommand,
+  cookies: AstroCookies
 ): Promise<MeetingProposalResponseDto> {
   try {
     // Pobranie preferencji użytkownika
-    const user_preferences = await get_user_preferences(user_id);
+    const user_preferences = await get_user_preferences(user_id, cookies);
 
     // Analiza notatki przez AI
     const note_analysis = await analyze_note(command.note);
 
     // Pobranie kategorii spotkań
-    const categories = await get_meeting_categories();
+    const categories = await get_meeting_categories(cookies);
 
     // Dopasowanie kategorii z analizy AI do istniejących kategorii
     const matched_category = match_category(note_analysis, categories);
 
     // Generowanie propozycji terminów
-    const proposals = await generate_meeting_times(user_id, command, note_analysis, user_preferences, matched_category);
+    const proposals = await generate_meeting_times(user_id, command, note_analysis, user_preferences, matched_category, cookies);
 
     // Zwrócenie sformatowanej odpowiedzi
     return {
@@ -410,14 +414,11 @@ export async function generate_proposals(
 /**
  * Updates proposal statistics for a user
  * @param user_id - The ID of the user
+ * @param cookies - Astro cookies for server supabase client
  */
-export async function update_proposal_stats(user_id: string) {
+export async function update_proposal_stats(user_id: string, cookies: AstroCookies) {
   try {
-    const supabase = createClientSupabase();
-    if (!supabase) {
-      console.error("Supabase client not available");
-      return;
-    }
+    const supabase = createServerSupabase(cookies);
 
     // Get current date for period calculations
     const today = new Date();

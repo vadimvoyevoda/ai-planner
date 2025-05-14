@@ -28,7 +28,7 @@ export default function ProposalCard({
   const endDate = new Date(proposal.endTime);
 
   return (
-    <Card className={`w-96 ${isSelected ? "ring-2 ring-primary" : ""}`} data-test-id={dataTestId}>
+    <Card className={`w-full sm:w-96 ${isSelected ? "ring-2 ring-primary" : ""}`} data-test-id={dataTestId}>
       <CardHeader>
         <CardTitle className="text-lg">{proposal.title}</CardTitle>
         <div className="text-sm text-muted-foreground">
@@ -73,7 +73,7 @@ export default function ProposalCard({
       </CardContent>
       <CardFooter>
         <Button
-          className="w-full"
+          className="w-full py-3 sm:py-2"
           onClick={() => onAccept(proposal)}
           disabled={isLoading}
           data-test-id="accept-proposal-button"
