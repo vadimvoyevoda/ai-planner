@@ -1,4 +1,4 @@
-# AIPersonalPlanner
+# AI PersonalPlanner
 
 AI-powered meeting scheduling and event planning assistant
 
