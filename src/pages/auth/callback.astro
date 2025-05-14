@@ -1,3 +1,4 @@
+---
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -5,15 +6,21 @@ const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_KEY
 );
 
+let redirectTo = "/auth/login"; // Default redirect
+
+// Handle authentication callback
 if (Astro.request.url) {
   const requestUrl = new URL(Astro.request.url);
   const code = requestUrl.searchParams.get("code");
 
   if (code) {
     await supabase.auth.exchangeCodeForSession(code);
-    return Astro.redirect("/dashboard");
+    redirectTo = "/dashboard";
   }
 }
 
-// If no code or error in exchange, redirect to login
-return Astro.redirect("/auth/login"); 
+// Perform the redirect
+Astro.redirect(redirectTo);
+---
+
+<!-- This page is only for handling redirects, no content needed --> 
