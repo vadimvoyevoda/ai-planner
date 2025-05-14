@@ -89,8 +89,26 @@ jobs:
         # The & at the end runs the server in the background
 
       - name: Wait for server to start
-        run: npx wait-on http://localhost:3000 -t 60000
-        
+        run: |
+          echo "Waiting for server to start..."
+          # Give the server some time to start
+          sleep 10
+          # Try to connect to the server, retry up to 5 times with a 5-second delay
+          for i in {1..5}; do
+            if curl -s http://localhost:3000 > /dev/null; then
+              echo "Server is up and running!"
+              break
+            fi
+            
+            if [ $i -eq 5 ]; then
+              echo "Server failed to start after multiple attempts"
+              exit 1
+            fi
+            
+            echo "Attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          done
+      
       - name: Run E2E tests
         run: npm run test:e2e
         
