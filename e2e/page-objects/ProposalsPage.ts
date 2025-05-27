@@ -23,16 +23,12 @@ export class ProposalsPage {
    * Fill the meeting note input field
    */
   async fillMeetingNote(note: string) {
-    try {
-      const inputByTestId = this.page.locator(SELECTORS.MEETING_NOTE_INPUT);
-      if ((await inputByTestId.count()) > 0) {
-        await inputByTestId.fill(note);
-      } else {
-        // Fallback to id selector if data-test-id is not found
-        await this.page.locator("#note").first().fill(note);
-      }
-    } catch (error) {
-      throw error;
+    const inputByTestId = this.page.locator(SELECTORS.MEETING_NOTE_INPUT);
+    if ((await inputByTestId.count()) > 0) {
+      await inputByTestId.fill(note);
+    } else {
+      // Fallback to id selector if data-test-id is not found
+      await this.page.locator("#note").first().fill(note);
     }
   }
 
