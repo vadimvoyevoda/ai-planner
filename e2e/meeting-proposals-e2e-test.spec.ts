@@ -46,6 +46,8 @@ test.describe('Meeting Proposals Flow', () => {
 
     // Step 2-3: Enter credentials from env variables
     console.log('Step 2-3: Entering login credentials');
+    console.log('login email: ', E2E_USERNAME);
+    console.log('login password: ', E2E_PASSWORD);
     await page.fill(SELECTORS.LOGIN_EMAIL_INPUT, E2E_USERNAME);
     await page.fill(SELECTORS.LOGIN_PASSWORD_INPUT, E2E_PASSWORD);
     await page.screenshot({ path: path.join(screenshotsDir, '02-credentials-entered.png') });
