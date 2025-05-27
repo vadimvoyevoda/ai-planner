@@ -54,6 +54,7 @@ export default function LoginForm() {
                     required
                     autoComplete="email"
                     disabled={isSubmitting}
+                    data-test-id="login-email"
                   />
                 </FormControl>
                 <FormMessage />
@@ -74,6 +75,7 @@ export default function LoginForm() {
                     required
                     autoComplete="current-password"
                     disabled={isSubmitting}
+                    data-test-id="login-password"
                   />
                 </FormControl>
                 <FormMessage />

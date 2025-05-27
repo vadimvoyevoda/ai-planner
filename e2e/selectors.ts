@@ -2,6 +2,11 @@
  * Test selectors used across Playwright tests
  */
 export const SELECTORS = {
+  // Login elements
+  LOGIN_EMAIL_INPUT: '[data-test-id="login-email"]',
+  LOGIN_PASSWORD_INPUT: '[data-test-id="login-password"]',
+  LOGIN_SUBMIT_BUTTON: '[data-test-id="login-submit"]',
+  
   // Form elements
   MEETING_NOTE_INPUT: '[data-test-id="meeting-note-input"]',
   PROPOSE_MEETING_BUTTON: '[data-test-id="propose-meeting-button"]',

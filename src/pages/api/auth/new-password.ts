@@ -46,6 +46,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { password } = data;
     const supabase = createServerSupabase(cookies);
 
+    // Attempt to update the user's password
+    // This works because Supabase automatically uses the session from the recovery flow
     const { error } = await supabase.auth.updateUser({
       password: password,
     });

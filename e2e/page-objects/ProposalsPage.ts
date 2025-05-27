@@ -16,6 +16,7 @@ export class ProposalsPage {
    */
   async goto() {
     await this.page.goto("/proposals");
+    await this.page.waitForLoadState("networkidle");
   }
 
   /**
@@ -30,9 +31,7 @@ export class ProposalsPage {
         // Fallback to id selector if data-test-id is not found
         await this.page.locator("#note").first().fill(note);
       }
-      console.log("Filled meeting note");
     } catch (error) {
-      console.error("Error filling meeting note:", error);
       throw error;
     }
   }

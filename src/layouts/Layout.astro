@@ -25,9 +25,18 @@ console.log("[Layout] Auth check:", {
   user: session?.user?.email,
 });
 
-// Redirect to login if there's no session and we're not already on the login page
-const isLoginPage = Astro.url.pathname === "/auth/login";
-if (!session && !isLoginPage) {
+// Paths that don't require authentication
+const authPaths = [
+  "/auth/login", 
+  "/auth/reset-password",
+  "/auth/new-password",
+  "/auth/register"
+];
+
+const isAuthPath = authPaths.includes(Astro.url.pathname);
+
+// Redirect to login if there's no session and we're not on an auth page
+if (!session && !isAuthPath) {
   console.log("[Layout] No session found, redirecting to login");
   return Astro.redirect("/auth/login");
 }

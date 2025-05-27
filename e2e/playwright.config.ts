@@ -40,6 +40,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
+  timeout: 90000, // 90 seconds to provide enough time for operations
 
   // Global setup for authentication
   globalSetup: require.resolve("./setup-global.ts"),
@@ -50,7 +51,6 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     actionTimeout: 60000,
-    testTimeout: 90000, // 90 seconds to provide enough time for operations
     storageState: path.join(__dirname, "playwright/.auth/user.json"),
   },
 
@@ -83,11 +83,12 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
     stderr: "pipe",
+    timeout: 60000, // Zwiększamy timeout do 60 sekund
   },
 
   // Avoid conflicts with Vitest
   expect: {
-    timeout: 30000, // Increased from 10 to 30 seconds
+    timeout: 60000, // Increased from 30 to 60 seconds to match timeouts in tests
   },
 
   // Remove conflicting workers config

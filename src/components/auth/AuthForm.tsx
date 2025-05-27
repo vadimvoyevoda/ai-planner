@@ -34,7 +34,7 @@ export default function AuthForm({
         <CardTitle className="text-2xl text-center">{title}</CardTitle>
       </CardHeader>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} id="loginForm">
         <CardContent className="space-y-4">
           {error && <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">{error}</div>}
 
@@ -42,7 +42,12 @@ export default function AuthForm({
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading}
+            data-test-id="login-submit"
+          >
             {isLoading ? "Proszę czekać..." : submitText}
           </Button>
 
