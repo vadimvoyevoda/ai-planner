@@ -74,17 +74,16 @@ test.describe('Meeting Proposals Flow', () => {
     console.log('Testing login API directly...');
     try {
       // Przygotuj dane logowania i wykonaj żądanie bezpośrednio na stronie
-      // @ts-expect-error - Page.evaluate może przyjąć więcej niż 2 argumenty w nowszych wersjach Playwright
       const response = await page.evaluate(
-        async (username: string, password: string) => {
+        async (credentials) => {
           const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              email: username,
-              password: password,
+              email: credentials.username,
+              password: credentials.password,
             }),
           });
           
@@ -94,8 +93,7 @@ test.describe('Meeting Proposals Flow', () => {
             return { error: 'Failed to parse JSON', status: res.status, text: await res.text() };
           }
         }, 
-        E2E_USERNAME, 
-        E2E_PASSWORD
+        { username: E2E_USERNAME, password: E2E_PASSWORD }
       );
       
       // Bezpieczne sprawdzenie odpowiedzi
