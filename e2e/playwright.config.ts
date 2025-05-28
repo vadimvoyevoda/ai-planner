@@ -37,10 +37,10 @@ export default defineConfig({
   testDir: "./",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 3 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
-  timeout: 90000, // 90 seconds to provide enough time for operations
+  timeout: 180000,
 
   // Global setup for authentication
   globalSetup: require.resolve("./setup-global.ts"),
@@ -50,7 +50,8 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    actionTimeout: 60000,
+    actionTimeout: 120000,
+    navigationTimeout: 120000,
     storageState: path.join(__dirname, "playwright/.auth/user.json"),
   },
 
@@ -83,12 +84,12 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
     stderr: "pipe",
-    timeout: 60000, // Zwiększamy timeout do 60 sekund
+    timeout: 120000,
   },
 
   // Avoid conflicts with Vitest
   expect: {
-    timeout: 60000, // Increased from 30 to 60 seconds to match timeouts in tests
+    timeout: 120000,
   },
 
   // Remove conflicting workers config

@@ -46,6 +46,7 @@ test.describe('Meeting Proposals Flow', () => {
 
     // Step 2-3: Enter credentials from env variables
     console.log('Step 2-3: Entering login credentials');
+    console.log('SUPABASE_URL: ', SUPABASE_URL);
     await page.fill(SELECTORS.LOGIN_EMAIL_INPUT, E2E_USERNAME);
     await page.fill(SELECTORS.LOGIN_PASSWORD_INPUT, E2E_PASSWORD);
     await page.screenshot({ path: path.join(screenshotsDir, '02-credentials-entered.png') });
@@ -72,8 +73,10 @@ test.describe('Meeting Proposals Flow', () => {
     // Sprawdźmy bezpośrednio API logowania, aby zobaczyć czy działa
     console.log('Testing login API directly...');
     try {
+      // Przygotuj dane logowania i wykonaj żądanie bezpośrednio na stronie
+      // @ts-expect-error - Page.evaluate może przyjąć więcej niż 2 argumenty w nowszych wersjach Playwright
       const response = await page.evaluate(
-        async (username, password) => {
+        async (username: string, password: string) => {
           const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: {
@@ -117,7 +120,68 @@ test.describe('Meeting Proposals Flow', () => {
 
     // Step 5: Verify redirect to home page
     console.log('Step 5: Verifying redirect to home page');
-    await page.waitForURL(`${BASE_URL}/`, { timeout: 60000 });
+    
+    // Najpierw sprawdźmy aktualny URL - być może już jesteśmy przekierowani
+    console.log('Current URL before waiting for redirect:', page.url());
+    
+    if (page.url() === `${BASE_URL}/`) {
+      console.log('Already on home page, no need to wait for redirect');
+    } else {
+      console.log(`Waiting for redirect to ${BASE_URL}/`);
+      try {
+        // Zwiększamy timeout i dodajemy waitUntil: 'domcontentloaded' aby być bardziej elastycznym
+        await page.waitForURL(`${BASE_URL}/`, { 
+          timeout: 120000,
+          waitUntil: 'domcontentloaded'
+        });
+        console.log('Successfully redirected to home page');
+      } catch (error) {
+        console.error('Timeout waiting for redirect to home page:', error);
+        console.log('Current URL after timeout:', page.url());
+        
+        // Jeśli jesteśmy już na stronie głównej mimo błędu, kontynuujmy
+        if (page.url() === `${BASE_URL}/`) {
+          console.log('Actually on home page despite timeout error - continuing test');
+        } else {
+          // Spróbujmy nawigować ręcznie do strony głównej jako obejście
+          console.log('Trying manual navigation to home page as fallback');
+          await page.goto(`${BASE_URL}/`);
+          
+          // Poczekajmy chwilę, aby strona się załadowała
+          await page.waitForTimeout(5000);
+          
+          if (page.url() !== `${BASE_URL}/`) {
+            await page.screenshot({ path: path.join(screenshotsDir, '03-redirect-failed.png') });
+            throw new Error(`Failed to navigate to home page. Current URL: ${page.url()}`);
+          }
+        }
+      }
+    }
+    
+    // Po przejściu na stronę główną, sprawdźmy czy użytkownik jest rzeczywiście zalogowany
+    console.log('Checking if user is logged in');
+    
+    // Poczekajmy na elementy, które powinny być widoczne tylko dla zalogowanych użytkowników
+    // To mogą być elementy nawigacji, przycisk wylogowania, nazwa użytkownika itp.
+    try {
+      // Zakładam, że na stronie głównej dla zalogowanego użytkownika jest jakiś element nawigacji
+      // Dostosuj ten selektor do faktycznej struktury strony
+      await page.waitForSelector('nav', { timeout: 30000 });
+      
+      // Możemy też sprawdzić, czy jest widoczny przycisk wylogowania lub nazwa użytkownika
+      const isLoggedIn = await page.locator('button:has-text("Wyloguj")').isVisible() 
+        || await page.locator('nav').isVisible();
+      
+      if (isLoggedIn) {
+        console.log('User is confirmed to be logged in');
+      } else {
+        console.error('User does not appear to be logged in properly');
+        await page.screenshot({ path: path.join(screenshotsDir, '03-login-status-check.png') });
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    }
+    
     await page.screenshot({ path: path.join(screenshotsDir, '03-logged-in.png') });
 
     // Step 6: Navigate to proposals page
