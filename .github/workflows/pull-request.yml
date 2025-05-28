@@ -82,6 +82,27 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       
+      - name: Create .env.test file
+        run: |
+          echo "PUBLIC_SUPABASE_URL=${{ secrets.PUBLIC_SUPABASE_URL }}" > .env.test
+          echo "PUBLIC_SUPABASE_KEY=${{ secrets.PUBLIC_SUPABASE_KEY }}" >> .env.test
+          echo "PUBLIC_SUPABASE_PROJECT_ID=${{ secrets.PUBLIC_SUPABASE_PROJECT_ID }}" >> .env.test
+          echo "E2E_USERNAME=${{ secrets.E2E_USERNAME }}" >> .env.test
+          echo "E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}" >> .env.test
+          echo "E2E_USERNAME_ID=${{ secrets.E2E_USERNAME_ID }}" >> .env.test
+          # Dodaj inne niezbędne zmienne środowiskowe
+      
+      - name: Debug environment
+        run: |
+          echo "Checking .env.test file presence:"
+          ls -la .env.test || echo ".env.test file not found"
+          
+          echo "Checking environment variables (sensitive values redacted):"
+          echo "PUBLIC_SUPABASE_URL is set: ${{ env.PUBLIC_SUPABASE_URL != '' }}"
+          echo "PUBLIC_SUPABASE_KEY is set: ${{ env.PUBLIC_SUPABASE_KEY != '' }}"
+          echo "E2E_USERNAME is set: ${{ env.E2E_USERNAME != '' }}"
+          echo "E2E_PASSWORD is set: ${{ env.E2E_PASSWORD != '' }}"
+      
       - name: Install Playwright browsers
         run: npx playwright install chromium # Only install Chromium browser for tests
       
@@ -111,8 +132,31 @@ jobs:
           done
       
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: |
+          # Najpierw wyświetl listę dostępnych zmiennych env w terminalu (bez wartości wrażliwych)
+          echo "Current directory: $(pwd)"
+          echo "Listing test files:"
+          ls -la e2e/
+          
+          # Uruchamianie testu z włączonym dodatkowym debugowaniem
+          DEBUG=pw:api NODE_OPTIONS="--no-node-snapshot" npm run test:e2e
         
+      - name: Upload error logs if tests fail
+        if: failure()
+        run: |
+          echo "Collecting logs from failed tests..."
+          # Zbieranie dodatkowych informacji w przypadku niepowodzenia
+          ls -la playwright-report/ || echo "No playwright-report directory"
+          ls -la e2e/screenshots/ || echo "No screenshots directory"
+          
+          # Wyświetl zawartość ostatniego zrzutu ekranu, jeśli istnieje
+          if [ -d "e2e/screenshots" ]; then
+            LAST_SCREENSHOT=$(ls -t e2e/screenshots/ | head -1)
+            if [ -n "$LAST_SCREENSHOT" ]; then
+              echo "Last screenshot taken: $LAST_SCREENSHOT"
+            fi
+          fi
+      
       - name: Shutdown application server
         if: always() # Run even if tests fail
         run: pkill -f "astro dev" || true # The || true ensures this step doesn't fail if no process is found
