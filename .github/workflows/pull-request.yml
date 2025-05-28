@@ -1,6 +1,8 @@
 name: Pull Request Workflow
 
 # This workflow runs on pull request events to ensure code quality and test coverage
+# Dodatkowy komentarz dla testu git
+# Poprawki dla testów E2E w GitHub Actions
 on:
   pull_request:
     branches: [ master ]
