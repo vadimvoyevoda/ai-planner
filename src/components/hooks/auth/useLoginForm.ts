@@ -29,8 +29,46 @@ export function useLoginForm() {
     setError(null);
     
     try {
+      console.log("Form submitted, calling auth service...");
       const data = await authService.login(values.email, values.password);
-      window.location.href = data.redirect || "/";
+      
+      console.log("Login response received:", { 
+        success: data?.success, 
+        hasRedirect: !!data?.redirect,
+        redirectTo: data?.redirect
+      });
+      
+      if (data.success) {
+        // Bardziej agresywne przekierowanie, które powinno zadziałać nawet w środowisku testowym
+        const redirectUrl = data.redirect || "/";
+        console.log("Redirecting to:", redirectUrl);
+        
+        // Próba różnych metod przekierowania, które mogą działać w różnych kontekstach
+        try {
+          // Metoda 1: Standardowe przekierowanie
+          window.location.href = redirectUrl;
+          
+          // Metoda 2: Jako fallback, jeśli pierwsze przekierowanie nie zadziałało w ciągu 500ms
+          setTimeout(() => {
+            if (window.location.pathname !== redirectUrl) {
+              console.log("Using fallback redirect method");
+              window.location.assign(redirectUrl);
+            }
+          }, 500);
+          
+          // Metoda 3: Jeśli poprzednie metody zawodzą, spróbuj replace
+          setTimeout(() => {
+            if (window.location.pathname !== redirectUrl) {
+              console.log("Using last resort redirect method");
+              window.location.replace(redirectUrl);
+            }
+          }, 1000);
+        } catch (redirectErr) {
+          console.error("Error during redirect:", redirectErr);
+          // Jeśli wszystkie metody zawodzą, spróbuj ostatecznego rozwiązania
+          window.location.pathname = redirectUrl;
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wystąpił błąd podczas logowania");
       console.error("Login error:", err);
