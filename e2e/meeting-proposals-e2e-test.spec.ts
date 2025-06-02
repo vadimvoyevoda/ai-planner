@@ -49,7 +49,6 @@ test.describe('Meeting Proposals Flow', () => {
 
     // Step 2-3: Enter credentials from env variables
     console.log('Step 2-3: Entering login credentials');
-    console.log('SUPABASE_URL: ', SUPABASE_URL);
     await page.fill(SELECTORS.LOGIN_EMAIL_INPUT, E2E_USERNAME);
     await page.fill(SELECTORS.LOGIN_PASSWORD_INPUT, E2E_PASSWORD);
     await page.screenshot({ path: path.join(screenshotsDir, '02-credentials-entered.png') });
@@ -59,12 +58,10 @@ test.describe('Meeting Proposals Flow', () => {
     await page.click(SELECTORS.LOGIN_SUBMIT_BUTTON);
     await page.screenshot({ path: path.join(screenshotsDir, '021-submit-login-form.png') });
 
-    // Dodajmy krótkie oczekiwanie, aby być pewnym, że formularz został przetworzony
-    console.log('Waiting for login processing...');
+    // Wait for login processing
     await page.waitForTimeout(5000);
-    console.log('Current URL after 5s wait:', page.url());
     
-    // Sprawdźmy, czy pojawił się komunikat o błędzie
+    // Check for error messages
     const errorVisible = await page.locator('text=Nieprawidłowy email lub hasło').isVisible()
       || await page.locator('text=Wystąpił błąd').isVisible();
     
@@ -73,10 +70,8 @@ test.describe('Meeting Proposals Flow', () => {
       await page.screenshot({ path: path.join(screenshotsDir, '022-login-error.png') });
     }
 
-    // Sprawdźmy bezpośrednio API logowania, aby zobaczyć czy działa
-    console.log('Testing login API directly...');
+    // Try direct API login if needed
     try {
-      // Przygotuj dane logowania i wykonaj żądanie bezpośrednio na stronie
       const response = await page.evaluate(
         async (credentials) => {
           const res = await fetch('/api/auth/login', {
@@ -99,19 +94,9 @@ test.describe('Meeting Proposals Flow', () => {
         { username: E2E_USERNAME, password: E2E_PASSWORD }
       );
       
-      // Bezpieczne sprawdzenie odpowiedzi
       const apiResponse = response as any;
       
-      console.log('Direct API login response:', {
-        success: apiResponse.success,
-        hasRedirect: !!apiResponse.redirect,
-        status: apiResponse.status,
-        error: apiResponse.error,
-      });
-      
-      // Jeśli API odpowiedziało pomyślnie, spróbujmy nawigować ręcznie
       if (apiResponse.success) {
-        console.log('API login successful, navigating manually to:', apiResponse.redirect || '/');
         await page.goto(`${BASE_URL}${apiResponse.redirect || '/'}`);
         await page.waitForTimeout(2000);
       }
@@ -122,33 +107,15 @@ test.describe('Meeting Proposals Flow', () => {
     // Step 5: Verify redirect to home page
     console.log('Step 5: Verifying redirect to home page');
     
-    // Najpierw sprawdźmy aktualny URL - być może już jesteśmy przekierowani
-    console.log('Current URL before waiting for redirect:', page.url());
-    
-    if (page.url() === `${BASE_URL}/`) {
-      console.log('Already on home page, no need to wait for redirect');
-    } else {
-      console.log(`Waiting for redirect to ${BASE_URL}/`);
+    if (page.url() !== `${BASE_URL}/`) {
       try {
-        // Zwiększamy timeout i dodajemy waitUntil: 'domcontentloaded' aby być bardziej elastycznym
         await page.waitForURL(`${BASE_URL}/`, { 
           timeout: 120000,
           waitUntil: 'domcontentloaded'
         });
-        console.log('Successfully redirected to home page');
       } catch (error) {
-        console.error('Timeout waiting for redirect to home page:', error);
-        console.log('Current URL after timeout:', page.url());
-        
-        // Jeśli jesteśmy już na stronie głównej mimo błędu, kontynuujmy
-        if (page.url() === `${BASE_URL}/`) {
-          console.log('Actually on home page despite timeout error - continuing test');
-        } else {
-          // Spróbujmy nawigować ręcznie do strony głównej jako obejście
-          console.log('Trying manual navigation to home page as fallback');
+        if (page.url() !== `${BASE_URL}/`) {
           await page.goto(`${BASE_URL}/`);
-          
-          // Poczekajmy chwilę, aby strona się załadowała
           await page.waitForTimeout(5000);
           
           if (page.url() !== `${BASE_URL}/`) {
@@ -159,26 +126,9 @@ test.describe('Meeting Proposals Flow', () => {
       }
     }
     
-    // Po przejściu na stronę główną, sprawdźmy czy użytkownik jest rzeczywiście zalogowany
-    console.log('Checking if user is logged in');
-    
-    // Poczekajmy na elementy, które powinny być widoczne tylko dla zalogowanych użytkowników
-    // To mogą być elementy nawigacji, przycisk wylogowania, nazwa użytkownika itp.
+    // Check if user is logged in
     try {
-      // Zakładam, że na stronie głównej dla zalogowanego użytkownika jest jakiś element nawigacji
-      // Dostosuj ten selektor do faktycznej struktury strony
       await page.waitForSelector('nav', { timeout: 30000 });
-      
-      // Możemy też sprawdzić, czy jest widoczny przycisk wylogowania lub nazwa użytkownika
-      const isLoggedIn = await page.locator('button:has-text("Wyloguj")').isVisible() 
-        || await page.locator('nav').isVisible();
-      
-      if (isLoggedIn) {
-        console.log('User is confirmed to be logged in');
-      } else {
-        console.error('User does not appear to be logged in properly');
-        await page.screenshot({ path: path.join(screenshotsDir, '03-login-status-check.png') });
-      }
     } catch (error) {
       console.error('Error checking login status:', error);
     }
@@ -202,31 +152,14 @@ test.describe('Meeting Proposals Flow', () => {
     // Step 9: Wait for proposals to load
     console.log('Step 9: Waiting for proposals to appear');
     try {
-      // First, wait for the loading indicator to disappear with increased timeout
+      // Wait for loading indicator to disappear
       await page.waitForSelector(SELECTORS.LOADING_PROPOSALS, { state: 'hidden', timeout: 90000 });
-      console.log('Loading indicator disappeared');
-      
-      // Take a screenshot after loading indicator disappears
       await page.screenshot({ path: path.join(screenshotsDir, '05c-after-loading-indicator.png') });
       
-      // Check for any error state that might appear after loading
-      const errorState = await page.evaluate(() => {
-        return {
-          errorElements: Array.from(document.querySelectorAll('.error, [data-error], [role="alert"]'))
-            .map(el => el.textContent || (el as HTMLElement).innerText || ''),
-          pageHtml: document.body.innerHTML
-        };
-      });
-      
-      if (errorState.errorElements.length > 0) {
-        console.error('Error elements found after loading:', errorState.errorElements);
-      }
-      
-      // Force a small wait to ensure any dynamic content has time to render
+      // Force a small wait to ensure dynamic content has time to render
       await page.waitForTimeout(5000);
       
-      // Instead of waiting for a specific container, check directly for proposal cards
-      // or any content that indicates proposals are loaded
+      // Check for proposal content with multiple selectors
       const proposalContentSelectors = [
         SELECTORS.PROPOSALS_CONTAINER,
         SELECTORS.PROPOSAL_CARD(0),
@@ -242,52 +175,30 @@ test.describe('Meeting Proposals Flow', () => {
         try {
           const isVisible = await page.locator(selector).isVisible({ timeout: 5000 });
           if (isVisible) {
-            console.log(`Proposals content found with selector: ${selector}`);
             proposalsFound = true;
             break;
           }
         } catch (e) {
-          console.log(`Selector ${selector} not found or timed out`);
+          // Continue trying other selectors
         }
       }
       
       if (!proposalsFound) {
-        // If no proposals content is found, check if we have any content at all
-        console.warn('No proposals content found. Checking page content...');
-        
-        // Get all visible text on the page
-        const pageText = await page.evaluate(() => {
-          return document.body.innerText;
-        });
-        
-        console.log('Page text content:', pageText.substring(0, 1000) + '...');
-        
-        // Check for common empty state messages
-        if (pageText.includes('No proposals') || pageText.includes('Brak propozycji')) {
-          console.log('Empty proposals state detected');
-          // This might be an expected state in some cases
-        }
-        
-        // Proceed anyway, but log the warning
-        console.warn('Continuing test despite not finding proposals content');
+        console.warn('No proposals content found. Continuing anyway.');
       }
     } catch (error) {
       console.error('Error during proposal loading sequence:', error);
-      // Take a screenshot of the current page state
       await page.screenshot({ path: path.join(screenshotsDir, '05b-loading-error.png') });
-      
-      // Try to continue the test anyway
-      console.log('Continuing test despite loading error');
     }
     
     // Give the page some time to stabilize
     await page.waitForTimeout(5000);
     await page.screenshot({ path: path.join(screenshotsDir, '06-proposals-loaded.png') });
     
-    // Look for proposal cards using multiple approaches
-    console.log('Looking for proposal cards');
+    // Step 10: Find and click accept button on a proposal
+    console.log('Step 10: Accepting a proposal');
     try {
-      // First try to find any proposal card using standard selector
+      // First try standard selector
       const foundProposalCard = await page.locator(SELECTORS.PROPOSAL_CARD(0)).isVisible({ timeout: 5000 });
       
       if (!foundProposalCard) {
@@ -303,81 +214,55 @@ test.describe('Meeting Proposals Flow', () => {
           try {
             const cards = await page.locator(selector).all();
             if (cards.length > 0) {
-              console.log(`Found ${cards.length} cards with selector: ${selector}`);
-              
-              // If cards are found, try to find the accept button
               for (let i = 0; i < cards.length; i++) {
                 const card = cards[i];
                 const acceptButton = await card.locator('button:has-text("Akceptuj"), button:has-text("Accept")').isVisible();
                 
                 if (acceptButton) {
-                  console.log(`Found accept button in card ${i}`);
-                  // Click the accept button
                   await card.locator('button:has-text("Akceptuj"), button:has-text("Accept")').click();
-                  console.log('Clicked accept button');
-                  
-                  // Proceed to conflict dialog handling
                   break;
                 }
               }
-              
               break;
             }
           } catch (e) {
-            console.log(`Error with selector ${selector}:`, e);
+            // Continue with next selector
           }
         }
       } else {
         // Standard flow - click accept on first proposal
-        console.log('Step 10: Clicking accept button on first proposal');
         await page.locator(SELECTORS.PROPOSAL_CARD(0)).locator(SELECTORS.ACCEPT_PROPOSAL_BUTTON).click();
       }
     } catch (error) {
       console.error('Error finding or clicking proposal card:', error);
-      // Take a screenshot to help diagnose
       await page.screenshot({ path: path.join(screenshotsDir, '07-proposal-card-error.png') });
       
-      // Try a more direct approach if the standard approach fails
+      // Try direct button search as fallback
       try {
-        console.log('Trying direct button search');
         const acceptButtons = await page.locator('button:has-text("Akceptuj"), button:has-text("Accept")').all();
-        
         if (acceptButtons.length > 0) {
-          console.log(`Found ${acceptButtons.length} accept buttons directly`);
           await acceptButtons[0].click();
-          console.log('Clicked first accept button found');
-        } else {
-          console.error('No accept buttons found on page');
         }
       } catch (directError) {
-        console.error('Error with direct button search:', directError);
+        console.error('Direct button search failed:', directError);
       }
     }
     
     // Wait for possible conflict dialog
-    console.log('Waiting for possible conflict dialog');
     await page.waitForTimeout(2000);
     await page.screenshot({ path: path.join(screenshotsDir, '07a-before-accepting-proposal.png') });
     
     // Check for conflict dialog
-    console.log('Checking for conflict dialog');
     try {
-      // First check directly by selector
       const hasConflictDialog = await page.locator(SELECTORS.CONFIRM_DIALOG).isVisible({ timeout: 5000 });
       
       if (hasConflictDialog) {
-        console.log('Conflict dialog detected by selector');
         await page.screenshot({ path: path.join(screenshotsDir, '07-conflict-dialog.png') });
         
-        // Check if accept conflicts button is available
         const acceptButtonVisible = await page.locator(SELECTORS.ACCEPT_WITH_CONFLICTS_BUTTON).isVisible({ timeout: 5000 });
         if (acceptButtonVisible) {
-          console.log('Clicking on accept with conflicts button');
           await page.click(SELECTORS.ACCEPT_WITH_CONFLICTS_BUTTON);
         } else {
-          console.warn('Accept with conflicts button not found. Trying alternative methods.');
-          
-          // Try alternative methods
           const alternativeSelectors = [
             'button:has-text("Akceptuj")',
             'button:has-text("Potwierdź")',
@@ -391,19 +276,15 @@ test.describe('Meeting Proposals Flow', () => {
             try {
               const isVisible = await page.locator(selector).isVisible({ timeout: 1000 });
               if (isVisible) {
-                console.log(`Found alternative confirm button with selector: ${selector}`);
                 await page.click(selector);
                 break;
               }
             } catch (e) {
-              console.log(`Alternative button selector ${selector} not found or not clickable`);
+              // Try next selector
             }
           }
         }
       } else {
-        // Even if we don't find a conflict dialog, check for any dialog
-        console.log('No conflict dialog detected by primary selector. Checking for generic dialogs.');
-        
         const genericDialogSelectors = [
           '[role="dialog"]',
           '.dialog',
@@ -416,10 +297,8 @@ test.describe('Meeting Proposals Flow', () => {
           try {
             const isVisible = await page.locator(selector).isVisible({ timeout: 1000 });
             if (isVisible) {
-              console.log(`Found generic dialog with selector: ${selector}`);
               await page.screenshot({ path: path.join(screenshotsDir, '07-generic-dialog.png') });
               
-              // Try to find and click a confirmation button
               const confirmButtons = [
                 'button:has-text("Akceptuj")',
                 'button:has-text("Potwierdź")',
@@ -433,19 +312,17 @@ test.describe('Meeting Proposals Flow', () => {
                 try {
                   const buttonVisible = await page.locator(buttonSelector).isVisible({ timeout: 1000 });
                   if (buttonVisible) {
-                    console.log(`Clicking button with selector: ${buttonSelector}`);
                     await page.click(buttonSelector);
                     break;
                   }
                 } catch (e) {
-                  console.log(`Button selector ${buttonSelector} not found or not clickable`);
+                  // Try next button
                 }
               }
-              
               break;
             }
           } catch (e) {
-            console.log(`Generic dialog selector ${selector} not found`);
+            // Try next dialog selector
           }
         }
       }
@@ -456,33 +333,20 @@ test.describe('Meeting Proposals Flow', () => {
     // Step 11: Verify redirect to home page
     console.log('Step 11: Verifying redirect to home page after accepting proposal');
     try {
-      // First, wait a bit to give time for any redirect to start
+      // First check if already on home page
       await page.waitForTimeout(5000);
-      console.log('Current URL after 5s wait:', page.url());
       
-      // Check if we're already on the home page
       if (page.url() === `${BASE_URL}/`) {
         console.log('Already on home page, test successful');
       } else {
-        // Try waiting for redirect with a shorter timeout
+        // Try waiting for redirect with shorter timeout
         try {
-          console.log('Waiting for redirect with timeout...');
           await page.waitForURL(`${BASE_URL}/`, { 
             timeout: 30000,
-            waitUntil: 'domcontentloaded' // Less strict condition
+            waitUntil: 'domcontentloaded'
           });
-          console.log('Successfully redirected to home page after accepting proposal');
         } catch (redirectTimeoutError) {
-          console.warn('Redirect timeout, trying alternative approach');
-          
-          // Take a screenshot before trying alternatives
-          try {
-            await page.screenshot({ path: path.join(screenshotsDir, '08a-before-alternatives.png') });
-          } catch (screenshotError) {
-            console.error('Could not take screenshot:', screenshotError);
-          }
-          
-          // Check if we need to handle any additional dialogs
+          // Check for any dialogs that need to be closed
           const hasVisibleDialog = await page.evaluate(() => {
             return !!(
               document.querySelector('[role="dialog"]') || 
@@ -493,8 +357,7 @@ test.describe('Meeting Proposals Flow', () => {
           });
           
           if (hasVisibleDialog) {
-            console.log('Dialog still visible, attempting to close it');
-            // Try clicking buttons that might close the dialog
+            // Try to close dialog
             await page.evaluate(() => {
               const buttons = Array.from(document.querySelectorAll('button'));
               const closeButtons = buttons.filter(b => 
@@ -510,7 +373,6 @@ test.describe('Meeting Proposals Flow', () => {
                 return true;
               }
               
-              // If no close button found, try the last button in the dialog
               const dialogButtons = Array.from(document.querySelectorAll('[role="dialog"] button, .dialog button, .modal button'));
               if (dialogButtons.length > 0) {
                 (dialogButtons[dialogButtons.length - 1] as HTMLElement).click();
@@ -520,35 +382,14 @@ test.describe('Meeting Proposals Flow', () => {
               return false;
             });
             
-            // Wait a bit after attempting to close dialog
             await page.waitForTimeout(2000);
           }
           
-          // If we're still on the proposals page, check if proposal was actually accepted
-          if (page.url().includes('/proposals')) {
-            console.log('Still on proposals page, checking if proposal was accepted');
-            
-            // Check if the first proposal card is still visible (might indicate acceptance failed)
-            const proposalStillVisible = await page.locator(SELECTORS.PROPOSAL_CARD(0)).isVisible().catch(() => false);
-            
-            if (proposalStillVisible) {
-              console.warn('Proposal card still visible, acceptance may have failed');
-              await page.screenshot({ path: path.join(screenshotsDir, '08b-proposal-still-visible.png') });
-            } else {
-              console.log('Proposal card no longer visible, may have been accepted successfully');
-            }
-          }
-          
-          // Regardless of what happened, navigate to home page to continue the test
-          console.log('Manually navigating to home page');
+          // Navigate to home page to continue the test
           await page.goto(`${BASE_URL}/`);
-          await page.waitForTimeout(5000);
-          console.log('After manual navigation, URL is:', page.url());
+          await page.waitForTimeout(3000);
           
-          // Consider test successful if we can navigate to home page
-          if (page.url() === `${BASE_URL}/`) {
-            console.log('Successfully navigated to home page, continuing test');
-          } else {
+          if (page.url() !== `${BASE_URL}/`) {
             throw new Error(`Failed to navigate to home page. Current URL: ${page.url()}`);
           }
         }
@@ -556,35 +397,20 @@ test.describe('Meeting Proposals Flow', () => {
     } catch (redirectError) {
       console.error('Error during redirect handling:', redirectError);
       
-      // Try to take a screenshot if possible
-      try {
-        await page.screenshot({ path: path.join(screenshotsDir, '08-redirect-issue.png') });
-      } catch (screenshotError) {
-        console.error('Could not take screenshot after error:', screenshotError);
-      }
+      // Last resort navigation
+      await page.goto(`${BASE_URL}/`);
+      await page.waitForTimeout(3000);
       
-      // As a last resort, try navigating to home page directly
-      try {
-        console.log('Last resort: navigating directly to home page');
-        await page.goto(`${BASE_URL}/`);
-        await page.waitForTimeout(5000);
-        
-        if (page.url() === `${BASE_URL}/`) {
-          console.log('Successfully navigated to home page as last resort');
-        } else {
-          throw new Error(`Failed to navigate to home page. Current URL: ${page.url()}`);
-        }
-      } catch (finalError) {
-        console.error('Final navigation attempt failed:', finalError);
+      if (page.url() !== `${BASE_URL}/`) {
         throw new Error('E2E test failed during redirect handling');
       }
     }
     
-    // Try to take final screenshot
+    // Take final screenshot
     try {
       await page.screenshot({ path: path.join(screenshotsDir, '08-back-to-home.png') });
     } catch (finalScreenshotError) {
-      console.error('Could not take final screenshot:', finalScreenshotError);
+      console.error('Could not take final screenshot');
     }
     
     console.log('E2E test completed successfully');
