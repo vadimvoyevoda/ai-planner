@@ -9,10 +9,17 @@ export async function acceptProposal(data: MeetingAcceptRequest): Promise<Meetin
     body: JSON.stringify(data),
   });
 
+  const responseData = await response.json();
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Error accepting meeting proposal");
+    // Specific error for disabled auth
+    if (response.status === 403 && responseData.authDisabled) {
+      throw new Error("Akceptacja propozycji wymaga włączonego uwierzytelniania. Funkcja jest obecnie niedostępna.");
+    }
+    
+    // Other errors
+    throw new Error(responseData.error || "Error accepting meeting proposal");
   }
 
-  return response.json();
+  return responseData;
 }

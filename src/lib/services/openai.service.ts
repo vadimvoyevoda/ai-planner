@@ -6,12 +6,22 @@ export class OpenAIService {
   private isTestEnvironment: boolean;
 
   constructor() {
-    const apiKey = import.meta.env.PLATFORM_OPENAI_KEY;
+    // Sprawdź dostępne klucze API, w kolejności priorytetów
+    const openaiKey = import.meta.env.OPENAI_API_KEY;
+    const openrouterKey = import.meta.env.OPENROUTER_API_KEY;
+    const platformKey = import.meta.env.PLATFORM_OPENAI_KEY;
+    
+    // Użyj pierwszego dostępnego klucza
+    const apiKey = openaiKey || openrouterKey || platformKey;
+    
     // Sprawdź, czy jesteśmy w środowisku testowym lub czy wymuszono mock
     this.isTestEnvironment =
       import.meta.env.MODE === "test" || process.env.NODE_ENV === "test" || import.meta.env.USE_MOCK_OPENAI === "true";
 
-    console.log("OpenAI Service - API Key available:", !!apiKey);
+    console.log("OpenAI Service - API Key source:", 
+      openaiKey ? "OPENAI_API_KEY" : 
+      openrouterKey ? "OPENROUTER_API_KEY" : 
+      platformKey ? "PLATFORM_OPENAI_KEY" : "NONE");
     console.log("OpenAI Service - Test environment:", this.isTestEnvironment);
     console.log("OpenAI Service - USE_MOCK_OPENAI:", import.meta.env.USE_MOCK_OPENAI);
 
@@ -23,9 +33,14 @@ export class OpenAIService {
         throw new Error("OpenAI API key is not configured. Please check your environment variables.");
       }
 
+      // Dostosuj URL bazowy w zależności od źródła klucza
+      const baseURL = openrouterKey 
+        ? "https://openrouter.ai/api/v1"
+        : "https://api.openai.com/v1";
+      
       this.openai = new OpenAI({
         apiKey,
-        baseURL: "https://api.openai.com/v1",
+        baseURL,
         dangerouslyAllowBrowser: true,
       });
     }
@@ -93,9 +108,13 @@ export class OpenAIService {
     try {
       console.log("Creating chat completion with messages:", this.messages);
 
+      // Użyj modelu z zmiennych środowiskowych lub domyślnego
+      const model = import.meta.env.OPENAI_MODEL || "gpt-3.5-turbo";
+      console.log("Using model:", model);
+
       const completion = await this.openai.chat.completions.create({
         messages: this.messages,
-        model: "gpt-3.5-turbo",
+        model,
         temperature: 0.7,
         max_tokens: 1000,
         response_format: { type: "json_object" },

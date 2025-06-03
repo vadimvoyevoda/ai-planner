@@ -1,0 +1,40 @@
+import { isFeatureEnabled, getCurrentEnvironment, getAllFeatureFlags } from "./featureFlags";
+
+// Pobieranie obecnego środowiska
+const currentEnv = getCurrentEnvironment();
+
+// Sprawdzanie konkretnych flag
+const authEnabled = isFeatureEnabled("auth");
+const collectionsEnabled = isFeatureEnabled("collections");
+
+// Pobieranie wszystkich flag
+const allFlags = getAllFeatureFlags(currentEnv);
+
+<div class="p-4 bg-gray-100 rounded-lg">
+  <h2 class="text-xl font-bold mb-4">Status Feature Flag</h2>
+  
+  <div class="mb-4">
+    <p class="font-medium">Aktualne środowisko: <span class="font-bold">{currentEnv}</span></p>
+  </div>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white p-4 rounded shadow">
+      <h3 class="font-bold mb-2">auth</h3>
+      <div class={`inline-block px-2 py-1 rounded ${authEnabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        {authEnabled ? 'Włączone' : 'Wyłączone'}
+      </div>
+    </div>
+    
+    <div class="bg-white p-4 rounded shadow">
+      <h3 class="font-bold mb-2">collections</h3>
+      <div class={`inline-block px-2 py-1 rounded ${collectionsEnabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        {collectionsEnabled ? 'Włączone' : 'Wyłączone'}
+      </div>
+    </div>
+  </div>
+  
+  <div>
+    <h3 class="font-bold mb-2">Wszystkie flagi:</h3>
+    <pre class="bg-gray-900 text-white p-3 rounded overflow-auto">{JSON.stringify(allFlags, null, 2)}</pre>
+  </div>
+</div> 

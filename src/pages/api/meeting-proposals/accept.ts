@@ -4,6 +4,8 @@ import { createServerSupabase } from "@/lib/supabase";
 import { transformSupabaseMeeting } from "@/types";
 import type { MeetingAcceptRequest } from "@/types";
 import type { Database } from "@/db/database.types";
+import { isFeatureEnabled } from "@/features/featureFlags";
+import { DEFAULT_USER } from "@/lib/services/defaultAuth";
 
 // Typ dla danych spotkania z bazy danych
 type DatabaseMeeting = Database["public"]["Tables"]["meetings"]["Row"] & {
@@ -37,6 +39,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     console.log("API Accept: Test environment:", isTestEnvironment);
     console.log("API Accept: Test request:", isTestRequest);
     console.log("API Accept: Final test mode:", isTest);
+
+    // Sprawdź, czy funkcja auth jest włączona
+    const authEnabled = isFeatureEnabled("auth");
+    console.log("API Accept: Auth feature enabled:", authEnabled);
+
+    if (!authEnabled && !isTest) {
+      return new Response(
+        JSON.stringify({
+          error: "Funkcja jest niedostępna. Akceptacja propozycji wymaga włączonego uwierzytelniania.",
+          authDisabled: true,
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const supabase = createServerSupabase(cookies);
 
@@ -95,7 +114,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         id: validatedBody.categoryId,
         name: "Mock Category",
         suggested_attire: "Mock Attire",
-      };
+        description: null,
+        created_at: new Date().toISOString(),
+        updated_at: null,
+      } as Database["public"]["Tables"]["meeting_categories"]["Row"];
     }
 
     // Check for conflicts
@@ -180,22 +202,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       console.log("API Accept: Using mock meeting data in test mode");
       meeting = {
         id: "test-meeting-id-" + new Date().getTime(),
+        user_id: "test-user-id",
         title: meetingData.title,
         description: meetingData.description,
         category_id: meetingData.category_id,
         start_time: meetingData.start_time,
         end_time: meetingData.end_time,
         location_name: meetingData.location_name,
+        location: null,
         ai_generated: true,
         original_note: meetingData.original_note,
         ai_generated_notes: meetingData.ai_generated_notes,
         created_at: new Date().toISOString(),
-        meeting_categories: {
-          id: category.id,
-          name: category.name,
-          suggested_attire: category.suggested_attire,
-        },
-      };
+        updated_at: null,
+        deleted_at: null,
+        meeting_categories: category,
+      } as unknown as DatabaseMeeting; // Use unknown as intermediate step for safer type assertion
     }
 
     // Transform the meeting data

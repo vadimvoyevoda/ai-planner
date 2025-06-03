@@ -1,10 +1,17 @@
 ---
 import "@/styles/global.css";
-import { createServerSupabase } from "@/lib/supabase";
-import LogoutButton from "@/components/auth/LogoutButton";
 import { Toaster } from "sonner";
 import { ViewTransitions } from "astro:transitions";
 import Providers from "@/components/providers/Providers";
+import { initializeFeatureFlags } from '@/features/featureFlags.init';
+import NavbarAuth from "@/components/shared/NavbarAuth.astro";
+import { isFeatureEnabled } from '@/features/featureFlags';
+import { DEFAULT_USER } from '@/lib/services/defaultAuth';
+
+// Inicjalizacja feature flag
+if (import.meta.env.SSR) {
+  await initializeFeatureFlags();
+}
 
 interface Props {
   title: string;
@@ -12,37 +19,69 @@ interface Props {
 
 const { title } = Astro.props;
 
-const supabase = createServerSupabase(Astro.cookies);
-const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession();
+// ===== DRASTYCZNIE UPROSZCZONA LOGIKA =====
 
-console.log("[Layout] Auth check:", {
-  path: Astro.url.pathname,
-  hasSession: !!session,
-  error: sessionError?.message,
-  user: session?.user?.email,
-});
+// 1. Sprawdź, czy auth jest włączone czy wyłączone (wartość flagi)
+const authEnabled = isFeatureEnabled("auth");
+console.log('[Layout] Wartość flagi auth:', authEnabled);
 
-// Paths that don't require authentication
-const authPaths = [
-  "/auth/login", 
-  "/auth/reset-password",
-  "/auth/new-password",
-  "/auth/register"
-];
-
+// 2. Ścieżki uwierzytelniania
+const authPaths = ["/auth/login", "/auth/register", "/auth/reset-password", "/auth/new-password"];
 const isAuthPath = authPaths.includes(Astro.url.pathname);
 
-// Redirect to login if there's no session and we're not on an auth page
-if (!session && !isAuthPath) {
-  console.log("[Layout] No session found, redirecting to login");
-  return Astro.redirect("/auth/login");
+// 3. Logika przekierowań
+let user = null;
+let isDefaultUser = false;
+
+if (authEnabled) {
+  // Gdy auth jest WŁĄCZONE:
+  // A. Sprawdź sesję użytkownika (tylko jeśli auth jest włączone)
+  const supabase = (await import('@/lib/supabase')).createServerSupabase(Astro.cookies);
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  console.log('[Layout] Sprawdzanie sesji:', { 
+    hasSession: !!session, 
+    error: error?.message,
+    path: Astro.url.pathname 
+  });
+  
+  // B. Przekieruj na logowanie, jeśli nie ma sesji i nie jesteśmy na stronie auth
+  if (!session && !isAuthPath) {
+    console.log('[Layout] Przekierowanie na logowanie (auth włączone, brak sesji)');
+    return Astro.redirect("/auth/login");
+  }
+  
+  // C. Jeśli mamy sesję, użyj danych użytkownika z sesji
+  if (session) {
+    user = session.user;
+  }
+} else {
+  // Gdy auth jest WYŁĄCZONE:
+  // A. Zawsze używaj domyślnego użytkownika
+  user = {
+    ...DEFAULT_USER,
+    aud: "authenticated",
+    created_at: new Date().toISOString(),
+  };
+  isDefaultUser = true;
+  
+  console.log('[Layout] Używam domyślnego użytkownika:', DEFAULT_USER.email);
+  
+  // B. Przekieruj na stronę główną, jeśli jesteśmy na stronie auth
+  if (isAuthPath) {
+    console.log('[Layout] Przekierowanie na stronę główną (auth wyłączone, strona auth)');
+    return Astro.redirect("/");
+  }
 }
 
-// Get user details if session exists
-const user = session?.user;
+// Wypisz podsumowanie
+console.log('[Layout] Podsumowanie:', {
+  auth: authEnabled ? 'WŁĄCZONE' : 'WYŁĄCZONE',
+  user: user?.email || 'BRAK',
+  isDefaultUser,
+  path: Astro.url.pathname,
+  isAuthPath,
+});
 
 // Aktywna ścieżka
 const pathname = new URL(Astro.request.url).pathname;
@@ -51,8 +90,13 @@ const pathname = new URL(Astro.request.url).pathname;
 const navItems = [
   { name: "Dashboard", href: "/" },
   { name: "Zaplanuj spotkanie", href: "/proposals" },
-  { name: "Ustawienia", href: "/settings" },
+  { name: "Ustawienia", href: "/settings", requiresAuth: true }
 ];
+
+// Filtruję elementy nawigacji, które wymagają auth gdy auth jest wyłączone
+const filteredNavItems = authEnabled 
+  ? navItems 
+  : navItems.filter(item => !item.requiresAuth);
 ---
 
 <!doctype html>
@@ -65,13 +109,22 @@ const navItems = [
     <meta name="generator" content={Astro.generator} />
     <title>{title ? `${title} | AI Planner` : "AI Planner"}</title>
     <ViewTransitions />
+    <script>
+      // Inicjalizacja feature flag po stronie klienta
+      import { initializeFeatureFlags } from '@/features/featureFlags.init';
+      
+      // Wywołaj asynchronicznie bez czekania na wynik
+      initializeFeatureFlags().catch(error => {
+        console.error('Błąd inicjalizacji flag funkcjonalności:', error);
+      });
+    </script>
   </head>
   <body class="h-full">
     <Providers client:load>
       <div class="min-h-screen flex flex-col bg-gray-50">
         <Toaster client:load richColors position="top-right" />
         {
-          session && (
+          user && (
             <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
               <div class="container mx-auto px-4 h-16 flex justify-between items-center">
                 <div class="flex items-center space-x-4">
@@ -82,7 +135,7 @@ const navItems = [
                     </h1>
                   </a>
                   <nav class="hidden md:flex items-center space-x-1">
-                    {navItems.map((item) => (
+                    {filteredNavItems.map((item) => (
                       <a
                         href={item.href}
                         class:list={[
@@ -99,16 +152,21 @@ const navItems = [
                 </div>
                 <div class="flex items-center space-x-4">
                   <div class="hidden md:flex items-center">
-                    <span class="text-sm text-gray-600 mr-2">{user?.email}</span>
+                    {!isDefaultUser && <span class="text-sm text-gray-600 mr-2">{user?.email}</span>}
+                    {isDefaultUser && (
+                      <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                        Użytkownik Domyślny
+                      </span>
+                    )}
                   </div>
-                  <LogoutButton client:load />
+                  <NavbarAuth isLoggedIn={!!user} />
                 </div>
               </div>
 
               {/* Mobile navigation */}
               <div class="md:hidden border-t border-gray-200">
                 <nav class="flex">
-                  {navItems.map((item) => (
+                  {filteredNavItems.map((item) => (
                     <a
                       href={item.href}
                       class:list={[
