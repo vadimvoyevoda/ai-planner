@@ -1,2 +1,16 @@
+name = "ai-planner"
+compatibility_date = "2023-12-01"
+
+# Cloudflare Pages configuration
+[site]
+bucket = "./dist"
+
+# Cloudflare environment variables for each environment
+[env.production]
+# Production-specific settings go here
+
+[env.preview]
+# Preview-specific settings go here
+
 [build]
 command = "npm install --legacy-peer-deps && npm run build" 
