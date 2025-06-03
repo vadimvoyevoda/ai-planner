@@ -1,0 +1,13 @@
+---
+import AuthButtons from "./AuthButtons";
+
+interface Props {
+  isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
+---
+
+<div class="flex items-center">
+  <AuthButtons client:load isLoggedIn={isLoggedIn} />
+</div> 

@@ -1,21 +1,26 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import RegisterForm from "@/components/auth/RegisterForm";
+import { isFeatureEnabled } from "@/features/featureFlags";
+import { setDefaultUserCookie } from "@/lib/services/cookieAuth";
 
-// Tymczasowa funkcja - zostanie zastąpiona prawdziwą implementacją
-const handleRegister = async (email: string, password: string, confirmPassword: string) => {
-  console.log("Register attempt:", { email, password, confirmPassword });
-};
+// Sprawdzenie flagi dla funkcjonalności auth
+const authEnabled = isFeatureEnabled("auth");
+
+// Gdy funkcjonalność jest wyłączona, ustaw ciasteczko i przekieruj na stronę główną
+// System automatycznie użyje domyślnego użytkownika
+if (!authEnabled) {
+  console.log("[Register] Auth wyłączone, ustawiam ciasteczko i przekierowuję na stronę główną");
+  setDefaultUserCookie(Astro.cookies);
+  return Astro.redirect("/?from=register");
+}
 ---
 
 <Layout title="Rejestracja | My Schedule">
   <div class="min-h-screen bg-gray-50">
     <div class="container mx-auto px-4 py-8 h-screen flex items-center justify-center">
       <div class="w-full max-w-md">
-        <RegisterForm
-          client:load
-          onSubmit={handleRegister}
-        />
+        <RegisterForm client:load />
       </div>
     </div>
   </div>

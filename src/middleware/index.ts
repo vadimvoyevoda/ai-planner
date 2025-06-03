@@ -1,24 +1,20 @@
 import { defineMiddleware } from "astro:middleware";
 import { createServerSupabase } from "@/lib/supabase";
 import { AUTH_TOKEN_COOKIE } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
+import type { User, Session } from "@supabase/supabase-js";
+import { isFeatureEnabled } from "@/features/featureFlags";
 
 // Define the expected structure for context.locals
-declare global {
-  namespace App {
-    interface Locals {
-      user?: User;
-      session?: any;
-    }
-  }
-}
-
-interface AstroWithLocals {
-  locals: {
-    user?: User;
-    session?: any;
-  };
-}
+// NOTE: Already defined in env.d.ts, but duplicated here for clarity
+// declare global {
+//   namespace App {
+//     interface Locals {
+//       supabase: SupabaseClient<Database>;
+//       user?: User;
+//       session?: Session;
+//     }
+//   }
+// }
 
 const PUBLIC_PATHS = [
   "/auth/login",
@@ -37,18 +33,28 @@ const PUBLIC_PATHS = [
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  // Initialize locals if it doesn't exist
-  if (!context.locals) {
-    context.locals = {};
-  }
-
   const { request, cookies, redirect } = context;
   const url = new URL(request.url);
   const pathname = url.pathname;
 
+  // Create the Supabase client for this request
+  const supabase = createServerSupabase(cookies);
+  
+  // Initialize locals with the client
+  context.locals = { 
+    supabase
+  };
+
   // Skip auth check for public paths and static assets
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     console.log("[Middleware] Skipping auth check for public path:", pathname);
+    return next();
+  }
+
+  // Check if auth feature is enabled - SKIP AUTH CHECK IF DISABLED
+  const authEnabled = isFeatureEnabled("auth");
+  if (!authEnabled) {
+    console.log("[Middleware] Auth feature is disabled, skipping auth check");
     return next();
   }
 
@@ -58,8 +64,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   console.log("[Middleware] Checking auth for path:", pathname);
   console.log("[Middleware] Auth token present:", !!authToken);
 
-  // Próbujemy pobrać sesję niezależnie od obecności ciasteczka
-  const supabase = createServerSupabase(cookies);
+  // Pobieramy sesję
   const {
     data: { session },
     error,

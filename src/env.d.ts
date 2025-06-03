@@ -29,6 +29,13 @@ interface ImportMetaEnv {
   readonly GOOGLE_CLIENT_SECRET: string;
   readonly GOOGLE_REDIRECT_URI: string;
   readonly OPENROUTER_API_KEY: string;
+  readonly ENV_NAME: "local" | "integration" | "prod";
+  
+  // Feature flags overrides
+  readonly FF_AUTH?: string;
+  readonly FF_COLLECTIONS?: string;
+  readonly [key: `FF_${string}`]: string | undefined; // Dla dynamicznych flag
+
   // more env variables...
 }
 

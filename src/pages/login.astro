@@ -1,10 +1,34 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import { isFeatureEnabled } from "@/features/featureFlags";
+
+/**
+ * UWAGA: Ta strona jest używana wyłącznie do celów deweloperskich!
+ * Służy do testowania API uwierzytelniania bez pełnej implementacji UI.
+ * 
+ * Dostęp do tej strony jest kontrolowany przez flagę funkcyjną "dev_tools".
+ * W środowiskach produkcyjnych i integracyjnych ta strona jest niedostępna.
+ * 
+ * Użytkownicy powinni korzystać z głównej strony logowania: /auth/login
+ */
+
+// Sprawdzenie flagi dla funkcjonalności dev_tools
+const devToolsEnabled = isFeatureEnabled("dev_tools");
+
+// Gdy funkcjonalność jest wyłączona, przekieruj na właściwą stronę logowania
+if (!devToolsEnabled) {
+  return Astro.redirect("/auth/login");
+}
 ---
 
-<Layout title="Login | My Schedule">
+<Layout title="Login Test Page | My Schedule">
   <div class="container mx-auto max-w-md p-6">
-    <h1 class="text-2xl font-bold mb-6">Login</h1>
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+      <p class="font-bold">Strona testowa</p>
+      <p>To jest strona testowa dla deweloperów. Użytkownicy powinni korzystać z <a href="/auth/login" class="underline">oficjalnej strony logowania</a>.</p>
+    </div>
+
+    <h1 class="text-2xl font-bold mb-6">Test API Logowania</h1>
 
     <form id="loginForm" class="space-y-4">
       <div>
@@ -17,49 +41,58 @@ import Layout from "@/layouts/Layout.astro";
         <input type="password" id="password" name="password" class="w-full p-2 border rounded" required />
       </div>
 
-      <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"> Login </button>
+      <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"> 
+        Test Login API 
+      </button>
     </form>
+
+    <div class="mt-4">
+      <a href="/auth/login" class="text-blue-600 hover:underline">Przejdź do oficjalnej strony logowania</a>
+    </div>
 
     <pre id="response" class="mt-8 p-4 bg-gray-100 rounded overflow-auto"></pre>
   </div>
 
   <script>
-    const form = document.getElementById("loginForm");
+    const form = document.getElementById("loginForm") as HTMLFormElement;
     const responseEl = document.getElementById("response");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    if (form && responseEl) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      const formData = new FormData(form);
-      const data = {
-        email: formData.get("email"),
-        password: formData.get("password"),
-      };
+        const formData = new FormData(form);
+        const data = {
+          email: formData.get("email"),
+          password: formData.get("password"),
+        };
 
-      try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+        try {
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
 
-        const result = await response.json();
-        responseEl.textContent = JSON.stringify(result, null, 2);
+          const result = await response.json();
+          responseEl.textContent = JSON.stringify(result, null, 2);
 
-        // Nie przekierowujemy automatycznie - pokazujemy tylko wynik
-        console.log("Response status:", response.status);
-        console.log("Response data:", result);
-      } catch (error) {
-        responseEl.textContent = JSON.stringify(
-          {
-            error: error.message,
-          },
-          null,
-          2
-        );
-      }
-    });
+          // Nie przekierowujemy automatycznie - pokazujemy tylko wynik
+          console.log("Response status:", response.status);
+          console.log("Response data:", result);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          responseEl.textContent = JSON.stringify(
+            {
+              error: errorMessage,
+            },
+            null,
+            2
+          );
+        }
+      });
+    }
   </script>
 </Layout>

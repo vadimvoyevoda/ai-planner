@@ -2,15 +2,26 @@
 import Layout from "@/layouts/Layout.astro";
 import LoginForm from "@/components/auth/LoginForm";
 import { createServerSupabase } from "@/lib/supabase";
+import { isFeatureEnabled } from "@/features/featureFlags";
 
+// Sprawdzenie flagi dla funkcjonalności auth
+const authEnabled = isFeatureEnabled("auth");
+console.log("[Login] Wartość flagi auth:", authEnabled);
+
+// Gdy funkcjonalność jest wyłączona, przekieruj na stronę główną
+if (!authEnabled) {
+  console.log("[Login] Auth wyłączone, przekierowanie na stronę główną");
+  return Astro.redirect("/");
+}
+
+// Sprawdź sesję
 const supabase = createServerSupabase(Astro.cookies);
-const {
-  data: { session },
-  error,
-} = await supabase.auth.getSession();
+const { data, error } = await supabase.auth.getSession();
+const session = data.session;
 
-// Only redirect if we have a valid session without errors
-if (session && !error && session.user) {
+// Jeśli użytkownik jest już zalogowany, przekieruj na stronę główną
+if (session) {
+  console.log("[Login] Użytkownik już zalogowany, przekierowanie na stronę główną");
   return Astro.redirect("/");
 }
 ---

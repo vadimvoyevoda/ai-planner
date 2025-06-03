@@ -3,6 +3,8 @@ import { createServerSupabase } from "@/lib/supabase";
 import { OpenAIService } from "@/lib/services/openai.service";
 import type { MeetingProposalRequest } from "@/types";
 import { update_proposal_stats } from "@/lib/services/meeting-proposals.service";
+import { isFeatureEnabled } from "@/features/featureFlags";
+import { DEFAULT_USER } from "@/lib/services/defaultAuth";
 
 export const prerender = false;
 
@@ -23,9 +25,37 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     console.log("API: Test request:", isTestRequest);
     console.log("API: USE_MOCK_OPENAI:", import.meta.env.USE_MOCK_OPENAI);
 
-    // Pobierz użytkownika tylko jeśli nie jesteśmy w trybie testowym
+    // Sprawdź, czy funkcja auth jest włączona
+    const authEnabled = isFeatureEnabled("auth");
+    console.log("API: Auth feature enabled:", authEnabled);
+
+    // Pobierz użytkownika
     let user;
-    if (!isTest) {
+    
+    if (isTest) {
+      // Użyj mocka użytkownika w trybie testowym
+      console.log("API: Using mock user for test mode");
+      user = {
+        id: "test-user-id",
+        email: "test@example.com",
+        role: "authenticated",
+      };
+    } else if (!authEnabled) {
+      // Gdy auth jest wyłączone, użyj domyślnego użytkownika
+      // Pozwól na nadpisanie domyślnych wartości przez zmienne środowiskowe
+      console.log("API: Auth disabled, using default user from environment or fallback");
+      user = {
+        id: import.meta.env.DEFAULT_USER_ID || DEFAULT_USER.id,
+        email: import.meta.env.DEFAULT_USER_EMAIL || DEFAULT_USER.email,
+        name: import.meta.env.DEFAULT_USER_NAME || DEFAULT_USER.name,
+        role: "authenticated",
+        aud: "authenticated",
+        created_at: new Date().toISOString(),
+      };
+      
+      console.log("API: Using default user:", user.email);
+    } else {
+      // W normalnym trybie, pobierz użytkownika z sesji
       const supabase = createServerSupabase(cookies);
       const {
         data: { user: userData },
@@ -34,18 +64,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
       if (error || !userData) {
         console.log("API: Unathorized - No valid session");
-        return new Response("Unauthorized", { status: 401 });
+        return new Response(JSON.stringify({ message: "Brak autoryzacji. Zaloguj się, aby korzystać z tej funkcji." }), { 
+          status: 401, 
+          headers: { "Content-Type": "application/json" }
+        });
       }
 
       user = userData;
-    } else {
-      // Użyj mocka użytkownika w trybie testowym
-      console.log("API: Using mock user for test mode");
-      user = {
-        id: "test-user-id",
-        email: "test@example.com",
-        role: "authenticated",
-      };
     }
 
     const body = (await request.json()) as MeetingProposalRequest;
@@ -127,8 +152,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       unavailableDays: preferences?.unavailable_weekdays || [],
     };
 
-    // Inicjalizacja OpenAI service
+    // Inicjalizacja OpenAI service z kluczem API z zmiennych środowiskowych
     const openai = new OpenAIService();
+    
+    // Dodaj info o kluczu z jakiego środowiska
+    console.log("API: Using OpenAI key from environment:", 
+      import.meta.env.OPENROUTER_API_KEY ? "OPENROUTER_API_KEY" :
+      import.meta.env.OPENAI_API_KEY ? "OPENAI_API_KEY" : "default");
+    
     openai.setSystemMessage(`Jesteś asystentem do analizy spotkań i generowania propozycji terminów. Na podstawie notatki użytkownika wygeneruj od 2 do 4 propozycji spotkań.
 
         WAŻNE - Zasady generowania dat:
@@ -232,11 +263,11 @@ ${categoriesText}
     // Filter out null proposals (where category wasn't found)
     const validProposals = mappedProposals.filter((p): p is NonNullable<typeof p> => p !== null);
 
-    // Aktualizacja statystyk - tylko w trybie produkcyjnym
-    if (!isTest) {
+    // Aktualizacja statystyk - tylko w trybie produkcyjnym i gdy auth jest włączone
+    if (!isTest && authEnabled) {
       await update_proposal_stats(user.id, cookies);
     } else {
-      console.log("API: Skipping update_proposal_stats in test mode");
+      console.log(`API: Skipping update_proposal_stats (Test: ${isTest}, Auth enabled: ${authEnabled})`);
     }
 
     return new Response(JSON.stringify({ proposals: validProposals }), {
