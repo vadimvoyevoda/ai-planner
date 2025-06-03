@@ -1,0 +1,71 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { isFeatureEnabled } from "@/features/featureFlags";
+import { Button } from "@/components/ui/button";
+
+const authEnabled = isFeatureEnabled("auth");
+const collectionsEnabled = isFeatureEnabled("collections");
+
+const title = "Demo Feature Flags";
+---
+
+<Layout title={title}>
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6">Demo Feature Flags</h1>
+    
+    <div class="space-y-8">
+      <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-xl font-semibold mb-4">Flagi funkcjonalności</h2>
+        
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <h3 class="font-medium">Auth Feature</h3>
+              <p class="text-sm text-gray-600">Kontroluje dostęp do funkcji uwierzytelniania</p>
+            </div>
+            <div class="flex items-center">
+              <span class={`inline-block w-3 h-3 rounded-full mr-2 ${authEnabled ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span class="font-medium">{authEnabled ? "Włączona" : "Wyłączona"}</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <h3 class="font-medium">Collections Feature</h3>
+              <p class="text-sm text-gray-600">Kontroluje dostęp do funkcji kolekcji/propozycji</p>
+            </div>
+            <div class="flex items-center">
+              <span class={`inline-block w-3 h-3 rounded-full mr-2 ${collectionsEnabled ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span class="font-medium">{collectionsEnabled ? "Włączona" : "Wyłączona"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {authEnabled && (
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h2 class="text-xl font-semibold mb-4">Zawartość widoczna tylko gdy Auth jest włączone</h2>
+          <p>Ten blok zawartości będzie widoczny tylko gdy flaga "auth" jest włączona.</p>
+          <div class="mt-4">
+            <Button client:load>Przycisk uwierzytelniania</Button>
+          </div>
+        </div>
+      )}
+      
+      {collectionsEnabled && (
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h2 class="text-xl font-semibold mb-4">Zawartość widoczna tylko gdy Collections jest włączone</h2>
+          <p>Ten blok zawartości będzie widoczny tylko gdy flaga "collections" jest włączona.</p>
+          <div class="mt-4">
+            <Button client:load variant="outline">Przeglądaj kolekcje</Button>
+          </div>
+        </div>
+      )}
+      
+      <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 class="text-xl font-semibold mb-4">Zawartość zawsze widoczna</h2>
+        <p>Ten blok zawartości będzie zawsze widoczny, niezależnie od stanu flag.</p>
+      </div>
+    </div>
+  </div>
+</Layout> 

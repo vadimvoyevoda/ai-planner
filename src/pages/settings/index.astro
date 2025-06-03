@@ -2,8 +2,19 @@
 import Layout from "@/layouts/Layout.astro";
 import PreferencesForm from "@/components/settings/PreferencesForm";
 import { createServerSupabase } from "@/lib/supabase";
+import { isFeatureEnabled } from "@/features/featureFlags";
 
 export const prerender = false;
+
+// Sprawdź, czy funkcja auth jest włączona
+const authEnabled = isFeatureEnabled("auth");
+console.log('[Settings] Auth enabled:', authEnabled);
+
+// Jeśli auth jest wyłączone, przekieruj na stronę główną
+if (!authEnabled) {
+  console.log('[Settings] Auth disabled, redirecting to home page');
+  return Astro.redirect("/");
+}
 
 let preferences = null;
 let error = null;

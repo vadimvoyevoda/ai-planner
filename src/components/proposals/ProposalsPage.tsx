@@ -6,6 +6,7 @@ import { acceptProposal } from "@/lib/services/meetings.service";
 import ProposalCard from "./ProposalCard";
 import ErrorState from "@/components/shared/ErrorState";
 import LoadingState from "@/components/shared/LoadingState";
+import { isFeatureEnabled } from "@/features/featureFlags";
 
 interface ProposalsPageProps {
   initialNote?: string;
@@ -22,6 +23,8 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
   const [selectedProposal, setSelectedProposal] = React.useState<MeetingProposal | null>(null);
   const [conflicts, setConflicts] = React.useState<MeetingConflict[] | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
+  const [isCollectionsEnabled, setIsCollectionsEnabled] = React.useState(true);
+  const [isAuthEnabled, setIsAuthEnabled] = React.useState(true);
 
   const proposalsRef = React.useRef<HTMLDivElement>(null);
 
@@ -54,8 +57,20 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Wystąpił błąd podczas generowania propozycji.");
+        // Handle "Unauthorized" text response
+        if (response.status === 401) {
+          throw new Error("Brak autoryzacji. Zaloguj się, aby korzystać z tej funkcji.");
+        }
+        
+        // Try to parse JSON error if it's not a 401
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Wystąpił błąd podczas generowania propozycji.");
+        } catch (jsonError) {
+          // If JSON parsing fails, use text content or status text
+          const errorText = await response.text();
+          throw new Error(errorText || response.statusText || "Wystąpił błąd podczas generowania propozycji.");
+        }
       }
 
       const data = await response.json();
@@ -121,12 +136,33 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
     }
   };
 
+  // Sprawdzanie flag przy montowaniu komponentu
+  React.useEffect(() => {
+    setIsCollectionsEnabled(isFeatureEnabled("collections"));
+    setIsAuthEnabled(isFeatureEnabled("auth"));
+  }, []);
+
   // Jeśli jest initialNote, automatycznie generuj propozycje
   React.useEffect(() => {
     if (initialNote) {
       handleSubmit({ preventDefault: () => {} } as React.FormEvent<HTMLFormElement>);
     }
   }, [initialNote]);
+
+  // Renderowanie komponentu zastępczego, gdy funkcja jest wyłączona
+  if (!isCollectionsEnabled) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-3xl font-bold mb-4">Funkcja tymczasowo niedostępna</h1>
+        <p className="text-gray-600 mb-8">
+          Ta funkcjonalność jest obecnie wyłączona. Prosimy spróbować później.
+        </p>
+        <Button onClick={() => window.location.href = "/"}>
+          Wróć do strony głównej
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -175,6 +211,13 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       {proposals.length > 0 && !isLoading && (
         <div ref={proposalsRef} className="mt-8" data-test-id="proposals-container">
           <h2 className="text-2xl font-semibold mb-6">Propozycje terminów</h2>
+          {!isAuthEnabled && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+              <p className="text-yellow-800">
+                <strong>Uwaga:</strong> Funkcja uwierzytelniania jest wyłączona. Można przeglądać propozycje, ale nie można ich zaakceptować.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:flex-nowrap gap-6 sm:overflow-x-auto sm:pb-4">
             {proposals.map((proposal, index) => (
               <div className="mb-6 sm:mb-0 w-full sm:w-auto" key={index}>
@@ -185,6 +228,7 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
                   isSelected={selectedProposal?.startTime === proposal.startTime}
                   isLoading={isLoading && selectedProposal?.startTime === proposal.startTime}
                   data-test-id={`proposal-card-${index}`}
+                  disableAccept={!isAuthEnabled}
                 />
               </div>
             ))}

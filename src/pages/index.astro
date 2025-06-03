@@ -34,7 +34,9 @@ console.log("Transformed meetings:", meetings);
 <Layout title="Dashboard | My Schedule">
   <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
-      <h1 class="text-2xl font-bold mb-2">Witaj, {session?.user?.email}!</h1>
+      <h1 class="text-2xl font-bold mb-2">
+        {session?.user?.email ? `Witaj, ${session.user.email.split('@')[0]}!` : "Witaj!"}
+      </h1>
       <p class="text-gray-600">Oto przegląd Twoich nadchodzących aktywności.</p>
     </div>
 
