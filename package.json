@@ -55,7 +55,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "@eslint/compat": "^1.2.9",
+    "@eslint/compat": "^1.0.0",
     "@playwright/test": "^1.52.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
