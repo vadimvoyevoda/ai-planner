@@ -7,6 +7,7 @@ import { initializeFeatureFlags } from '@/features/featureFlags.init';
 import NavbarAuth from "@/components/shared/NavbarAuth.astro";
 import { isFeatureEnabled } from '@/features/featureFlags';
 import { DEFAULT_USER } from '@/lib/services/defaultAuth';
+import { EnvironmentBadge } from "@/components/EnvironmentBadge";
 
 // Inicjalizacja feature flag
 if (import.meta.env.SSR) {
@@ -123,6 +124,7 @@ const filteredNavItems = authEnabled
     <Providers client:load>
       <div class="min-h-screen flex flex-col bg-gray-50">
         <Toaster client:load richColors position="top-right" />
+        <EnvironmentBadge client:load />
         {
           user && (
             <header class="bg-white border-b border-gray-200 sticky top-0 z-10">

@@ -22,14 +22,16 @@ declare global {
 }
 
 interface ImportMetaEnv {
+  readonly PUBLIC_ENV_NAME: 'local' | 'integration' | 'prod';
   readonly PUBLIC_SUPABASE_URL: string;
   readonly PUBLIC_SUPABASE_KEY: string;
+  readonly PUBLIC_SUPABASE_PROJECT_ID: string;
+  readonly PLATFORM_OPENAI_KEY: string;
   readonly SITE_URL: string;
   readonly GOOGLE_CLIENT_ID: string;
   readonly GOOGLE_CLIENT_SECRET: string;
   readonly GOOGLE_REDIRECT_URI: string;
   readonly OPENROUTER_API_KEY: string;
-  readonly ENV_NAME: "local" | "integration" | "prod";
   
   // Feature flags overrides
   readonly FF_AUTH?: string;
