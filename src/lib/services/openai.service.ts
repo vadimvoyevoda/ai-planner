@@ -1,51 +1,71 @@
 import OpenAI from "openai";
+import { getOpenAIKey } from "./cloudflare-env";
 
 export class OpenAIService {
-  private openai: OpenAI;
+  private openai: OpenAI | null = null;
   private messages: { role: "system" | "user" | "assistant"; content: string }[];
   private isTestEnvironment: boolean;
 
   constructor() {
-    // Sprawdź dostępne klucze API, w kolejności priorytetów
-    const openaiKey = import.meta.env.PLATFORM_OPENAI_KEY;
-    const openrouterKey = import.meta.env.OPENROUTER_API_KEY;
-    const platformKey = import.meta.env.PLATFORM_OPENAI_KEY;
-    
-    // Użyj pierwszego dostępnego klucza
-    const apiKey = openaiKey || openrouterKey || platformKey;
-    
     // Sprawdź, czy jesteśmy w środowisku testowym lub czy wymuszono mock
     this.isTestEnvironment =
-      import.meta.env.MODE === "test" || process.env.NODE_ENV === "test" || import.meta.env.USE_MOCK_OPENAI === "true";
+      import.meta.env.MODE === "test" || 
+      import.meta.env.NODE_ENV === "test" || 
+      import.meta.env.USE_MOCK_OPENAI === "true";
+    
+    this.messages = [];
+  }
 
-    console.log("OpenAI Service - API Key source:", 
-      openaiKey ? "PLATFORM_OPENAI_KEY" : 
-      openrouterKey ? "OPENROUTER_API_KEY" : 
-      platformKey ? "PLATFORM_OPENAI_KEY" : "NONE");
-    console.log("OpenAI Service - Test environment:", this.isTestEnvironment);
-    console.log("OpenAI Service - USE_MOCK_OPENAI:", import.meta.env.USE_MOCK_OPENAI);
-
+  // Lazy initialization of OpenAI client
+  private getOpenAIClient(): OpenAI {
+    if (this.openai) {
+      return this.openai;
+    }
+    
     if (this.isTestEnvironment) {
       console.log("Using mock OpenAI implementation for tests");
       this.openai = this.createMockOpenAI() as unknown as OpenAI;
-    } else {
-      if (!apiKey) {
-        throw new Error("OpenAI API key is not configured. Please check your environment variables.");
-      }
-
-      // Dostosuj URL bazowy w zależności od źródła klucza
-      const baseURL = openrouterKey 
-        ? "https://openrouter.ai/api/v1"
-        : "https://api.openai.com/v1";
-      
-      this.openai = new OpenAI({
-        apiKey,
-        baseURL,
-        dangerouslyAllowBrowser: true,
-      });
+      return this.openai;
+    }
+    
+    // Try direct environment variables - ONLY OpenAI keys
+    const platformKey = import.meta.env.PLATFORM_OPENAI_KEY;
+    const fallbackKey = import.meta.env.OPENAI_API_KEY;
+    
+    // Then try our CloudFlare utility
+    const cloudflareKey = getOpenAIKey();
+    
+    // Check if we're in production environment based on PUBLIC_ENV_NAME
+    const isProd = import.meta.env.PUBLIC_ENV_NAME === "prod";
+    
+    // Use only OpenAI keys, no OpenRouter
+    const apiKey = platformKey || fallbackKey || cloudflareKey;
+    
+    // Improved logging for debugging
+    console.log("OpenAI Service - API Key detection:");
+    console.log("PLATFORM_OPENAI_KEY present:", !!platformKey);
+    console.log("OPENAI_API_KEY present:", !!fallbackKey);
+    console.log("CloudFlare key present:", !!cloudflareKey);
+    console.log("Environment:", import.meta.env.PUBLIC_ENV_NAME);
+    console.log("Is Production:", isProd);
+    console.log("Final API Key exists:", !!apiKey);
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key is not configured. Please check your environment variables.");
     }
 
-    this.messages = [];
+    // Always use OpenAI API
+    const baseURL = "https://api.openai.com/v1";
+    
+    console.log("OpenAI Service - Using base URL:", baseURL);
+    
+    this.openai = new OpenAI({
+      apiKey,
+      baseURL,
+      dangerouslyAllowBrowser: true,
+    });
+    
+    return this.openai;
   }
 
   private createMockOpenAI() {
@@ -106,13 +126,15 @@ export class OpenAIService {
 
   async createChatCompletion() {
     try {
+      // Get OpenAI client lazily
+      const openai = this.getOpenAIClient();
       console.log("Creating chat completion with messages:", this.messages);
 
       // Użyj modelu z zmiennych środowiskowych lub domyślnego
       const model = import.meta.env.OPENAI_MODEL || "gpt-3.5-turbo";
       console.log("Using model:", model);
 
-      const completion = await this.openai.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: this.messages,
         model,
         temperature: 0.7,

@@ -21,17 +21,26 @@ import {
 import { findModelByCapabilities, getModelInfo } from "./modelRegistry";
 
 export class OpenAIService {
-  private apiKey: string;
-  private modelName: string;
-  private modelParams: ModelParameters;
+  private apiKey: string | null = null;
+  private modelName: string = "gpt-4o-mini";
+  private modelParams: ModelParameters = {
+    temperature: 0.7,
+    top_p: 1,
+    max_tokens: 1000,
+  };
   private systemMessage: string | null = null;
   private conversation: ConversationMessage[] = [];
   private responseFormat: ResponseFormatSchema | null = null;
-  private baseUrl: string;
-  private timeout: number;
+  private baseUrl: string = "https://api.openai.com/v1";
+  private timeout: number = 30000;
+  private isInitialized: boolean = false;
 
   // Rate limiting
-  private rateLimitConfig: RateLimitConfig;
+  private rateLimitConfig: RateLimitConfig = {
+    maxRetries: 3,
+    retryDelay: 1000,
+    maxConcurrentRequests: 5,
+  };
   private requestQueue: (() => Promise<unknown>)[] = [];
   private activeRequests = 0;
   private retryCount = 0;
@@ -55,41 +64,64 @@ export class OpenAIService {
       rateLimitConfig?: Partial<RateLimitConfig>;
     }
   ) {
-    // Try to get API key from environment variable if not provided
-    console.log("Constructor - Provided API Key:", apiKey);
-    console.log("Constructor - Environment Variable:", import.meta.env.PLATFORM_OPENAI_KEY);
+    if (apiKey) {
+      this.apiKey = apiKey;
+      this.isInitialized = true;
+    }
+    
+    if (options?.defaultModel) {
+      this.modelName = options.defaultModel;
+    }
+    
+    if (options?.defaultParams) {
+      this.modelParams = {
+        ...this.modelParams,
+        ...options.defaultParams,
+      };
+    }
+    
+    if (options?.baseUrl) {
+      this.baseUrl = options.baseUrl;
+    }
+    
+    if (options?.timeout) {
+      this.timeout = options.timeout;
+    }
+    
+    if (options?.rateLimitConfig) {
+      this.rateLimitConfig = {
+        ...this.rateLimitConfig,
+        ...options.rateLimitConfig,
+      };
+    }
+  }
 
-    const finalApiKey = apiKey || import.meta.env.PLATFORM_OPENAI_KEY;
-    console.log("Constructor - Final API Key:", finalApiKey);
-
-    if (!finalApiKey) {
+  // Ensure the service is initialized before use
+  private ensureInitialized(): void {
+    if (this.isInitialized) {
+      return;
+    }
+    
+    // Try to get API key from environment variables if not provided in constructor
+    const envApiKey = 
+      import.meta.env.PLATFORM_OPENAI_KEY || 
+      import.meta.env.OPENAI_API_KEY;
+    
+    if (!envApiKey) {
       throw new OpenAIValidationError(
-        "API key is required. Provide it directly or set PLATFORM_OPENAI_KEY environment variable"
+        "API key is required. Provide it directly or set PLATFORM_OPENAI_KEY or OPENAI_API_KEY environment variable"
       );
     }
-
-    this.apiKey = finalApiKey;
-    this.modelName = options?.defaultModel || "gpt-4o-mini";
-    this.modelParams = options?.defaultParams || {
-      temperature: 0.7,
-      top_p: 1,
-      max_tokens: 1000,
-    };
-    this.baseUrl = options?.baseUrl || "https://api.openai.com/v1";
-    this.timeout = options?.timeout || 30000;
-
-    // Initialize rate limiting config
-    this.rateLimitConfig = {
-      maxRetries: options?.rateLimitConfig?.maxRetries ?? 3,
-      retryDelay: options?.rateLimitConfig?.retryDelay ?? 1000,
-      maxConcurrentRequests: options?.rateLimitConfig?.maxConcurrentRequests ?? 5,
-    };
-
+    
+    this.apiKey = envApiKey;
+    
     try {
       getModelInfo(this.modelName);
     } catch {
       throw new OpenAIValidationError(`Invalid default model: ${this.modelName}`);
     }
+    
+    this.isInitialized = true;
   }
 
   // Conversation Management Methods
@@ -199,9 +231,8 @@ export class OpenAIService {
           this.responseFormat = {
             type: "json_schema",
             json_schema: {
-              name: "generic_json",
-              strict: true,
-              schema: { type: "object" },
+              type: "object",
+              properties: {},
             },
           };
           break;
@@ -218,6 +249,8 @@ export class OpenAIService {
 
   // API Communication Methods
   buildRequestPayload(): RequestPayload {
+    this.ensureInitialized();
+    
     const messages: ConversationMessage[] = [];
 
     if (this.systemMessage) {
@@ -384,6 +417,8 @@ export class OpenAIService {
   }
 
   async createChatCompletionStream(): Promise<ReadableStream> {
+    this.ensureInitialized();
+    
     return this.enqueueRequest(async () => {
       const payload = this.buildRequestPayload();
       payload.stream = true;
@@ -415,6 +450,8 @@ export class OpenAIService {
   }
 
   private async makeApiRequest(endpoint: string, payload: unknown): Promise<unknown> {
+    this.ensureInitialized();
+    
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);

@@ -1,9 +1,50 @@
 import { z } from "zod";
 import OpenAI from "openai";
+import { getOpenAIKey } from "./cloudflare-env";
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.PLATFORM_OPENAI_KEY,
-});
+// Use lazy initialization instead of creating at module load time
+let openaiClient: OpenAI | null = null;
+
+// Function to get or create the OpenAI client
+function getOpenAIClient(): OpenAI {
+  if (openaiClient) {
+    return openaiClient;
+  }
+  
+  // Check OpenAI keys only
+  const platformKey = import.meta.env.PLATFORM_OPENAI_KEY;
+  const openaiKey = import.meta.env.OPENAI_API_KEY;
+  
+  // Try CloudFlare utility
+  const cloudflareKey = getOpenAIKey();
+  
+  // Check if we're in production environment
+  const isProd = import.meta.env.PUBLIC_ENV_NAME === "prod";
+  
+  // Combine all possible keys
+  const apiKey = platformKey || openaiKey || cloudflareKey;
+  
+  // Detailed logging for debugging
+  console.log("AI Service - API Key detection:");
+  console.log("PLATFORM_OPENAI_KEY present:", !!platformKey);
+  console.log("OPENAI_API_KEY present:", !!openaiKey);
+  console.log("Environment:", import.meta.env.PUBLIC_ENV_NAME);
+  console.log("Is Production:", isProd);
+  console.log("Final API Key exists:", !!apiKey);
+  
+  if (!apiKey) {
+    throw new Error("OpenAI API key is missing. Please check environment variables.");
+  }
+  
+  // Create the OpenAI client with OpenAI API only
+  openaiClient = new OpenAI({
+    apiKey,
+    baseURL: "https://api.openai.com/v1",
+    dangerouslyAllowBrowser: true,
+  });
+  
+  return openaiClient;
+}
 
 const meetingSuggestionSchema = z.object({
   title: z.string(),
@@ -35,6 +76,9 @@ Format your response as a JSON array of meeting objects.`;
 
 export async function generateMeetingSuggestions(note: string): Promise<MeetingSuggestion[]> {
   try {
+    // Get the client only when needed
+    const openai = getOpenAIClient();
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [

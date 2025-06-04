@@ -155,10 +155,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Inicjalizacja OpenAI service z kluczem API z zmiennych środowiskowych
     const openai = new OpenAIService();
     
-    // Dodaj info o kluczu z jakiego środowiska
-    console.log("API: Using OpenAI key from environment:", 
-      import.meta.env.OPENROUTER_API_KEY ? "OPENROUTER_API_KEY" :
-      import.meta.env.OPENAI_API_KEY ? "OPENAI_API_KEY" : "default");
+    // Dodaj info o kluczu z jakiego środowiska - only OpenAI keys
+    console.log("API: Available API Keys:", {
+      PLATFORM_OPENAI_KEY: !!import.meta.env.PLATFORM_OPENAI_KEY,
+      OPENAI_API_KEY: !!import.meta.env.OPENAI_API_KEY
+    });
+    
+    // Log environment name to confirm we're in the right environment
+    console.log("API: Environment name:", import.meta.env.PUBLIC_ENV_NAME || "undefined");
+    
+    // Add a small delay to make sure all initializations are complete
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     openai.setSystemMessage(`Jesteś asystentem do analizy spotkań i generowania propozycji terminów. Na podstawie notatki użytkownika wygeneruj od 2 do 4 propozycji spotkań.
 
