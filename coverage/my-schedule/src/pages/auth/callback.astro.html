@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>0/26</span>
             </div>
         
             
@@ -81,7 +81,14 @@
 <a name='L16'></a><a href='#L16'>16</a>
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
-<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -99,32 +106,46 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { createClient } from "@supabase/supabase-js";</span></span></span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >---</span></span></span>
+<span class="cstat-no" title="statement not covered" >import { createClient } from "@supabase/supabase-js";</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >const supabase = createClient(</span>
 <span class="cstat-no" title="statement not covered" >  import.meta.env.PUBLIC_SUPABASE_URL,</span>
 <span class="cstat-no" title="statement not covered" >  import.meta.env.PUBLIC_SUPABASE_KEY</span>
 <span class="cstat-no" title="statement not covered" >);</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >let redirectTo = "/auth/login"; // Default redirect</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// Handle authentication callback</span>
 <span class="cstat-no" title="statement not covered" >if (Astro.request.url) {</span>
 <span class="cstat-no" title="statement not covered" >  const requestUrl = new URL(Astro.request.url);</span>
 <span class="cstat-no" title="statement not covered" >  const code = requestUrl.searchParams.get("code");</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >  if (code) {</span>
 <span class="cstat-no" title="statement not covered" >    await supabase.auth.exchangeCodeForSession(code);</span>
-<span class="cstat-no" title="statement not covered" >    return Astro.redirect("/dashboard");</span>
+<span class="cstat-no" title="statement not covered" >    redirectTo = "/dashboard";</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// If no code or error in exchange, redirect to login</span>
-<span class="cstat-no" title="statement not covered" >return Astro.redirect("/auth/login"); </span></pre></td></tr></table></pre>
+<span class="cstat-no" title="statement not covered" >// Perform the redirect</span>
+<span class="cstat-no" title="statement not covered" >Astro.redirect(redirectTo);</span>
+<span class="cstat-no" title="statement not covered" >---</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >&lt;!-- This page is only for handling redirects, no content needed --&gt; </span></pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-05-14T17:37:20.614Z
+                at 2025-06-04T21:05:35.538Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

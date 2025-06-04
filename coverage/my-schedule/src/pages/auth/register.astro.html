@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/27</span>
             </div>
         
             
@@ -84,7 +84,17 @@
 <a name='L19'></a><a href='#L19'>19</a>
 <a name='L20'></a><a href='#L20'>20</a>
 <a name='L21'></a><a href='#L21'>21</a>
-<a name='L22'></a><a href='#L22'>22</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -108,21 +118,26 @@
 <span class="cline-any cline-no">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >---</span></span></span>
 <span class="cstat-no" title="statement not covered" >import Layout from "@/layouts/Layout.astro";</span>
 <span class="cstat-no" title="statement not covered" >import RegisterForm from "@/components/auth/RegisterForm";</span>
+<span class="cstat-no" title="statement not covered" >import { isFeatureEnabled } from "@/features/featureFlags";</span>
+<span class="cstat-no" title="statement not covered" >import { setDefaultUserCookie } from "@/lib/services/cookieAuth";</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >// Tymczasowa funkcja - zostanie zastąpiona prawdziwą implementacją</span>
-<span class="cstat-no" title="statement not covered" >const handleRegister = async (email: string, password: string, confirmPassword: string) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >  console.log("Register attempt:", { email, password, confirmPassword });</span>
-<span class="cstat-no" title="statement not covered" >};</span>
+<span class="cstat-no" title="statement not covered" >// Sprawdzenie flagi dla funkcjonalności auth</span>
+<span class="cstat-no" title="statement not covered" >const authEnabled = isFeatureEnabled("auth");</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >// Gdy funkcjonalność jest wyłączona, ustaw ciasteczko i przekieruj na stronę główną</span>
+<span class="cstat-no" title="statement not covered" >// System automatycznie użyje domyślnego użytkownika</span>
+<span class="cstat-no" title="statement not covered" >if (!authEnabled) {</span>
+<span class="cstat-no" title="statement not covered" >  console.log("[Register] Auth wyłączone, ustawiam ciasteczko i przekierowuję na stronę główną");</span>
+<span class="cstat-no" title="statement not covered" >  setDefaultUserCookie(Astro.cookies);</span>
+<span class="cstat-no" title="statement not covered" >  return Astro.redirect("/?from=register");</span>
+<span class="cstat-no" title="statement not covered" >}</span>
 <span class="cstat-no" title="statement not covered" >---</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >&lt;Layout title="Rejestracja | My Schedule"&gt;</span>
 <span class="cstat-no" title="statement not covered" >  &lt;div class="min-h-screen bg-gray-50"&gt;</span>
 <span class="cstat-no" title="statement not covered" >    &lt;div class="container mx-auto px-4 py-8 h-screen flex items-center justify-center"&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;div class="w-full max-w-md"&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;RegisterForm</span>
-<span class="cstat-no" title="statement not covered" >          client:load</span>
-<span class="cstat-no" title="statement not covered" >          onSubmit={handleRegister}</span>
-<span class="cstat-no" title="statement not covered" >        /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;RegisterForm client:load /&gt;</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
 <span class="cstat-no" title="statement not covered" >  &lt;/div&gt;</span>
@@ -133,7 +148,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-05-14T17:37:20.614Z
+                at 2025-06-04T21:05:35.538Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>
