@@ -1,8 +1,9 @@
 import { z } from "zod";
 import OpenAI from "openai";
 
+const apiKey = import.meta.env.OPENAI_API_KEY || import.meta.env.PLATFORM_OPENAI_KEY;
 const openai = new OpenAI({
-  apiKey: import.meta.env.OPENAI_API_KEY,
+  apiKey,
 });
 
 const meetingSuggestionSchema = z.object({
