@@ -7,7 +7,7 @@ export class OpenAIService {
 
   constructor() {
     // Sprawdź dostępne klucze API, w kolejności priorytetów
-    const openaiKey = import.meta.env.OPENAI_API_KEY;
+    const openaiKey = import.meta.env.PLATFORM_OPENAI_KEY;
     const openrouterKey = import.meta.env.OPENROUTER_API_KEY;
     const platformKey = import.meta.env.PLATFORM_OPENAI_KEY;
     
@@ -19,7 +19,7 @@ export class OpenAIService {
       import.meta.env.MODE === "test" || process.env.NODE_ENV === "test" || import.meta.env.USE_MOCK_OPENAI === "true";
 
     console.log("OpenAI Service - API Key source:", 
-      openaiKey ? "OPENAI_API_KEY" : 
+      openaiKey ? "PLATFORM_OPENAI_KEY" : 
       openrouterKey ? "OPENROUTER_API_KEY" : 
       platformKey ? "PLATFORM_OPENAI_KEY" : "NONE");
     console.log("OpenAI Service - Test environment:", this.isTestEnvironment);
