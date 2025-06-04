@@ -71,7 +71,7 @@ const logFeatureFlag = (
  * Pobiera bieżące środowisko z zmiennych środowiskowych
  */
 export const getCurrentEnvironment = (): Environment => {
-  const envName = import.meta.env.ENV_NAME || "local";
+  const envName = import.meta.env.PUBLIC_ENV_NAME || "local";
   
   if (envName === "local" || envName === "integration" || envName === "prod") {
     return envName;
