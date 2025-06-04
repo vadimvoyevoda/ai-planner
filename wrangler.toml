@@ -5,6 +5,9 @@ compatibility_date = "2023-12-01"
 [site]
 bucket = "./dist"
 
+# Add pages_build_output_dir to specify the output directory for Pages
+pages_build_output_dir = "dist"
+
 # Cloudflare environment variables for each environment
 [env.production]
 # Production-specific settings go here
