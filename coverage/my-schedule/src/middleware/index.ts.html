@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/51</span>
+                <span class='fraction'>0/56</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/51</span>
+                <span class='fraction'>0/56</span>
             </div>
         
             
@@ -152,11 +152,12 @@
 <a name='L87'></a><a href='#L87'>87</a>
 <a name='L88'></a><a href='#L88'>88</a>
 <a name='L89'></a><a href='#L89'>89</a>
-<a name='L90'></a><a href='#L90'>90</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -191,17 +192,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -209,11 +199,31 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -244,24 +254,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { defineMiddleware } from "astro:middleware";<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
 import { createServerSupabase } from "@/lib/supabase";
 import { AUTH_TOKEN_COOKIE } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
+import type { User, Session } from "@supabase/supabase-js";
+import { isFeatureEnabled } from "@/features/featureFlags";
 &nbsp;
 // Define the expected structure for context.locals
-declare global {
-  namespace App {
-    interface Locals {
-      user?: User;
-      session?: any;
-    }
-  }
-}
-&nbsp;
-interface AstroWithLocals {
-  locals: {
-    user?: User;
-    session?: any;
-  };
-}
+// NOTE: Already defined in env.d.ts, but duplicated here for clarity
+// declare global {
+//   namespace App {
+//     interface Locals {
+//       supabase: SupabaseClient&lt;Database&gt;;
+//       user?: User;
+//       session?: Session;
+//     }
+//   }
+// }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >const PUBLIC_PATHS = [</span>
 <span class="cstat-no" title="statement not covered" >  "/auth/login",</span>
@@ -280,18 +286,28 @@ interface AstroWithLocals {
 <span class="cstat-no" title="statement not covered" >];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >export const onRequest = defineMiddleware(async (context, next) =&gt; {</span>
-  // Initialize locals if it doesn't exist
-<span class="cstat-no" title="statement not covered" >  if (!context.locals) {</span>
-<span class="cstat-no" title="statement not covered" >    context.locals = {};</span>
-<span class="cstat-no" title="statement not covered" >  }</span>
-&nbsp;
 <span class="cstat-no" title="statement not covered" >  const { request, cookies, redirect } = context;</span>
 <span class="cstat-no" title="statement not covered" >  const url = new URL(request.url);</span>
 <span class="cstat-no" title="statement not covered" >  const pathname = url.pathname;</span>
 &nbsp;
+  // Create the Supabase client for this request
+<span class="cstat-no" title="statement not covered" >  const supabase = createServerSupabase(cookies);</span>
+  
+  // Initialize locals with the client
+<span class="cstat-no" title="statement not covered" >  context.locals = { </span>
+<span class="cstat-no" title="statement not covered" >    supabase</span>
+<span class="cstat-no" title="statement not covered" >  };</span>
+&nbsp;
   // Skip auth check for public paths and static assets
 <span class="cstat-no" title="statement not covered" >  if (PUBLIC_PATHS.some((path) =&gt; pathname.startsWith(path))) {</span>
 <span class="cstat-no" title="statement not covered" >    console.log("[Middleware] Skipping auth check for public path:", pathname);</span>
+<span class="cstat-no" title="statement not covered" >    return next();</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+&nbsp;
+  // Check if auth feature is enabled - SKIP AUTH CHECK IF DISABLED
+<span class="cstat-no" title="statement not covered" >  const authEnabled = isFeatureEnabled("auth");</span>
+<span class="cstat-no" title="statement not covered" >  if (!authEnabled) {</span>
+<span class="cstat-no" title="statement not covered" >    console.log("[Middleware] Auth feature is disabled, skipping auth check");</span>
 <span class="cstat-no" title="statement not covered" >    return next();</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
@@ -301,8 +317,7 @@ interface AstroWithLocals {
 <span class="cstat-no" title="statement not covered" >  console.log("[Middleware] Checking auth for path:", pathname);</span>
 <span class="cstat-no" title="statement not covered" >  console.log("[Middleware] Auth token present:", !!authToken);</span>
 &nbsp;
-  // Próbujemy pobrać sesję niezależnie od obecności ciasteczka
-<span class="cstat-no" title="statement not covered" >  const supabase = createServerSupabase(cookies);</span>
+  // Pobieramy sesję
 <span class="cstat-no" title="statement not covered" >  const {</span>
 <span class="cstat-no" title="statement not covered" >    data: { session },</span>
 <span class="cstat-no" title="statement not covered" >    error,</span>
@@ -337,7 +352,7 @@ interface AstroWithLocals {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-05-14T17:37:20.614Z
+                at 2025-06-04T21:05:35.538Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
