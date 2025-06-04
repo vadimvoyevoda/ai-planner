@@ -7,6 +7,7 @@ import cloudflare from "@astrojs/cloudflare";
 
 // Debug environment variables
 console.log("PLATFORM_OPENAI_KEY:", import.meta.env.PLATFORM_OPENAI_KEY);
+console.log("Environment:", import.meta.env.PUBLIC_ENV_NAME);
 
 // https://astro.build/config
 export default defineConfig({
@@ -30,5 +31,9 @@ export default defineConfig({
       port: 3000,
       strictPort: true, // Fail if port 3000 is not available
     },
+    // Define environment variable types
+    define: {
+      'import.meta.env.PUBLIC_ENV_NAME': JSON.stringify(process.env.PUBLIC_ENV_NAME || 'local'),
+    }
   },
 });
