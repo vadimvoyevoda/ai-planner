@@ -8,6 +8,11 @@ bucket = "./dist"
 # Add pages_build_output_dir to specify the output directory for Pages
 pages_build_output_dir = "dist"
 
+# Configure CPU and Memory limits for function execution
+[limits]
+cpu_ms = 60000       # Increase CPU time limit to 60 seconds
+memory_mb = 256      # Increase memory limit to 256 MB
+
 # Cloudflare environment variables for each environment
 [env.production]
 # Production-specific settings go here
