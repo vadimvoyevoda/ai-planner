@@ -91,16 +91,24 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
       setIsLoading(true);
       setError(null);
 
-      const response = await acceptProposal({
+      // Ensure all fields are defined with fallbacks
+      const acceptData = {
         startTime: proposal.startTime,
         endTime: proposal.endTime,
         title: proposal.title,
         description: proposal.description,
         categoryId: proposal.categoryId,
         locationName: proposal.locationName,
-        aiGeneratedNotes: proposal.aiGeneratedNotes,
-        originalNote: proposal.originalNote,
-      });
+        // Add fallbacks for these fields
+        aiGeneratedNotes: proposal.aiGeneratedNotes || "", 
+        originalNote: proposal.originalNote || "",
+      };
+
+      console.log("Sending acceptance data:", acceptData);
+
+      const response = await acceptProposal(acceptData);
+
+      console.log("Received response:", response);
 
       if (response.conflicts && response.conflicts.length > 0) {
         setConflicts(response.conflicts);
@@ -110,6 +118,7 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
 
       window.location.href = "/";
     } catch (err) {
+      console.error("Error accepting proposal:", err);
       setError({
         message: err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd podczas akceptacji propozycji.",
       });

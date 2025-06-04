@@ -43,11 +43,18 @@ const logLevels = {
 
 type LogLevel = typeof logLevels[keyof typeof logLevels];
 
+// Zoptymalizowana funkcja logowania - tylko błędy w trybie produkcyjnym
 const logFeatureFlag = (
   level: LogLevel,
   message: string,
   meta?: Record<string, unknown>
 ) => {
+  // W produkcji logujemy tylko błędy
+  const isProd = import.meta.env.PUBLIC_ENV_NAME === "prod";
+  if (isProd && level !== logLevels.ERROR) {
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   const logData = {
     timestamp,
@@ -57,7 +64,6 @@ const logFeatureFlag = (
     ...meta,
   };
   
-  // W środowisku produkcyjnym można zintegrować z rzeczywistym systemem logowania
   if (level === logLevels.ERROR) {
     console.error(JSON.stringify(logData));
   } else if (level === logLevels.WARN) {
@@ -67,99 +73,102 @@ const logFeatureFlag = (
   }
 };
 
+// Cache dla bieżącego środowiska
+let currentEnvironmentCache: Environment | null = null;
+
 /**
  * Pobiera bieżące środowisko z zmiennych środowiskowych
  */
 export const getCurrentEnvironment = (): Environment => {
+  if (currentEnvironmentCache) {
+    return currentEnvironmentCache;
+  }
+
   const envName = import.meta.env.PUBLIC_ENV_NAME || "local";
   
   if (envName === "local" || envName === "integration" || envName === "prod") {
+    currentEnvironmentCache = envName;
     return envName;
   }
   
-  logFeatureFlag(
-    logLevels.WARN,
-    `Nieznane środowisko: ${envName}, używam domyślnego (local)`,
-    { providedEnv: envName }
-  );
+  currentEnvironmentCache = "local";
   return "local";
 };
+
+// Cache dla flag z env
+const envFlagCache: Record<string, boolean | undefined> = {};
 
 /**
  * Pobiera wartość flagi z zmiennych środowiskowych
  */
 const getEnvFlag = (flagName: string): boolean | undefined => {
+  // Sprawdź cache
+  if (envFlagCache[flagName] !== undefined) {
+    return envFlagCache[flagName];
+  }
+
   const envVarName = `FF_${flagName.toUpperCase()}`;
   const envValue = import.meta.env[envVarName];
   
   if (envValue === undefined) {
+    envFlagCache[flagName] = undefined;
     return undefined;
   }
   
   // Konwersja stringa na boolean
   if (envValue === "true" || envValue === "1" || envValue === "yes") {
+    envFlagCache[flagName] = true;
     return true;
   }
   
   if (envValue === "false" || envValue === "0" || envValue === "no") {
+    envFlagCache[flagName] = false;
     return false;
   }
   
-  logFeatureFlag(
-    logLevels.WARN,
-    `Nieprawidłowa wartość zmiennej środowiskowej ${envVarName}: ${envValue}`,
-    { envValue }
-  );
-  
+  envFlagCache[flagName] = undefined;
   return undefined;
 };
+
+// Cache dla flag funkcjonalności
+const featureFlagCache: Record<string, Record<string, boolean>> = {};
 
 /**
  * Sprawdza, czy dana funkcjonalność jest włączona
  */
 export const isFeatureEnabled = (featureName: string, environment?: Environment): boolean => {
   const env = environment || getCurrentEnvironment();
+  const cacheKey = `${env}:${featureName}`;
+  
+  // Sprawdź cache
+  if (featureFlagCache[cacheKey] !== undefined) {
+    return featureFlagCache[cacheKey] as unknown as boolean;
+  }
   
   try {
     // Najpierw sprawdź zmienne środowiskowe
     const envValue = getEnvFlag(featureName);
     if (envValue !== undefined) {
-      logFeatureFlag(
-        logLevels.INFO,
-        `Odczytano flagę ze zmiennej środowiskowej ${featureName}`,
-        { environment: env, value: envValue }
-      );
+      featureFlagCache[cacheKey] = { value: envValue } as unknown as Record<string, boolean>;
       return envValue;
     }
     
     // Następnie sprawdź flagi dynamiczne
     const dynamicValue = dynamicFlags[env]?.[featureName];
     if (dynamicValue !== undefined) {
-      logFeatureFlag(
-        logLevels.INFO,
-        `Odczytano dynamiczną flagę ${featureName}`,
-        { environment: env, value: dynamicValue }
-      );
+      featureFlagCache[cacheKey] = { value: dynamicValue } as unknown as Record<string, boolean>;
       return dynamicValue;
     }
     
     // Na końcu sprawdź domyślne flagi
     const defaultValue = defaultFlags[env]?.[featureName as FeatureFlagName];
     if (defaultValue !== undefined) {
-      logFeatureFlag(
-        logLevels.INFO,
-        `Odczytano domyślną flagę ${featureName}`,
-        { environment: env, value: defaultValue }
-      );
+      featureFlagCache[cacheKey] = { value: defaultValue } as unknown as Record<string, boolean>;
       return defaultValue;
     }
     
     // Jeśli flaga nie jest zdefiniowana, zwróć false
-    logFeatureFlag(
-      logLevels.WARN,
-      `Flaga ${featureName} nie jest zdefiniowana dla środowiska ${env}, zwracam false`,
-      { environment: env }
-    );
+    featureFlagCache[cacheKey] = { value: false } as unknown as Record<string, boolean>;
     return false;
   } catch (error) {
     logFeatureFlag(
@@ -188,6 +197,13 @@ export const updateFeatureFlags = async (
       ...validatedFlags,
     };
     
+    // Wyczyść cache dla tego środowiska
+    Object.keys(featureFlagCache).forEach(key => {
+      if (key.startsWith(`${environment}:`)) {
+        delete featureFlagCache[key];
+      }
+    });
+    
     logFeatureFlag(
       logLevels.INFO,
       `Zaktualizowano flagi dla środowiska ${environment}`,
@@ -215,12 +231,6 @@ export const fetchFeatureFlags = async (environment: Environment): Promise<void>
     // const data = await response.json();
     // updateFeatureFlags(environment, data);
     
-    logFeatureFlag(
-      logLevels.INFO,
-      `Rozpoczęto pobieranie flag dla środowiska ${environment}`,
-      { environment }
-    );
-    
     // Przykładowa implementacja (do zastąpienia rzeczywistym kodem)
     setTimeout(() => {
       const mockData = {
@@ -229,13 +239,6 @@ export const fetchFeatureFlags = async (environment: Environment): Promise<void>
       };
       
       updateFeatureFlags(environment, mockData)
-        .then(() => {
-          logFeatureFlag(
-            logLevels.INFO,
-            `Pomyślnie pobrano flagi dla środowiska ${environment}`,
-            { flags: mockData }
-          );
-        })
         .catch((error) => {
           logFeatureFlag(
             logLevels.ERROR,
@@ -243,7 +246,7 @@ export const fetchFeatureFlags = async (environment: Environment): Promise<void>
             { error: String(error) }
           );
         });
-    }, 1000);
+    }, 200);
   } catch (error) {
     logFeatureFlag(
       logLevels.ERROR,
@@ -254,35 +257,48 @@ export const fetchFeatureFlags = async (environment: Environment): Promise<void>
 };
 
 /**
- * Resetuje dynamiczne flagi do wartości domyślnych
+ * Resetuje konfigurację flag dla danego środowiska do wartości domyślnych
  */
 export const resetFeatureFlags = (environment: Environment): void => {
+  // Reset do wartości domyślnych
   dynamicFlags[environment] = {};
+  
+  // Wyczyść cache dla tego środowiska
+  Object.keys(featureFlagCache).forEach(key => {
+    if (key.startsWith(`${environment}:`)) {
+      delete featureFlagCache[key];
+    }
+  });
   
   logFeatureFlag(
     logLevels.INFO,
-    `Zresetowano flagi dla środowiska ${environment}`,
-    { environment }
+    `Zresetowano flagi dla środowiska ${environment} do wartości domyślnych`
   );
 };
 
 /**
- * Pobiera listę wszystkich dostępnych flag
+ * Pobiera wszystkie aktywne flagi dla danego środowiska
  */
 export const getAllFeatureFlags = (environment: Environment): Record<string, boolean> => {
-  const env = environment || getCurrentEnvironment();
+  const flags: Record<string, boolean> = {};
   
-  // Połącz domyślne i dynamiczne flagi
-  const allFlags = {
-    ...defaultFlags[env],
-    ...dynamicFlags[env],
-  };
+  // Dodaj domyślne flagi
+  Object.entries(defaultFlags[environment] || {}).forEach(([key, value]) => {
+    flags[key] = value;
+  });
   
-  logFeatureFlag(
-    logLevels.INFO,
-    `Pobrano wszystkie flagi dla środowiska ${env}`,
-    { flagCount: Object.keys(allFlags).length }
-  );
+  // Nadpisz dynamicznymi flagami
+  Object.entries(dynamicFlags[environment] || {}).forEach(([key, value]) => {
+    flags[key] = value;
+  });
   
-  return allFlags;
+  // Nadpisz flagami z zmiennych środowiskowych
+  Object.keys(flags).forEach((key) => {
+    const envValue = getEnvFlag(key);
+    if (envValue !== undefined) {
+      flags[key] = envValue;
+    }
+  });
+  
+  return flags;
 }; 

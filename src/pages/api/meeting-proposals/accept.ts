@@ -19,15 +19,17 @@ const bodySchema = z.object({
   description: z.string(),
   categoryId: z.string(),
   locationName: z.string(),
-  aiGeneratedNotes: z.string(),
-  originalNote: z.string(),
+  aiGeneratedNotes: z.string().optional().default(""),
+  originalNote: z.string().optional().default(""),
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     // Sprawdź, czy jesteśmy w środowisku testowym
     const isTestEnvironment =
-      import.meta.env.MODE === "test" || process.env.NODE_ENV === "test" || import.meta.env.USE_MOCK_OPENAI === "true";
+      import.meta.env.MODE === "test" || 
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === "test") || 
+      import.meta.env.USE_MOCK_OPENAI === "true";
 
     // Sprawdź czy mamy specjalny nagłówek lub cookie dla testów
     const isTestRequest =
@@ -36,13 +38,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const isTest = isTestEnvironment || isTestRequest;
 
-    console.log("API Accept: Test environment:", isTestEnvironment);
-    console.log("API Accept: Test request:", isTestRequest);
-    console.log("API Accept: Final test mode:", isTest);
-
     // Sprawdź, czy funkcja auth jest włączona
-    const authEnabled = isFeatureEnabled("auth");
-    console.log("API Accept: Auth feature enabled:", authEnabled);
+    let authEnabled = true;
+    try {
+      authEnabled = isFeatureEnabled("auth");
+    } catch (error) {
+      console.error("Error checking auth feature flag:", error);
+    }
 
     if (!authEnabled && !isTest) {
       return new Response(
@@ -57,59 +59,160 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
+    // Parse request body - improved error handling
+    let body;
+    try {
+      // Try to parse the request body with explicit content-type checking
+      const contentType = request.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Invalid content type", 
+            details: "Expected application/json" 
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      const bodyText = await request.text();
+      if (!bodyText || bodyText.trim() === '') {
+        return new Response(
+          JSON.stringify({ 
+            error: "Empty request body", 
+            details: "Request body cannot be empty" 
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      try {
+        body = JSON.parse(bodyText);
+      } catch (jsonError) {
+        console.error("JSON parse error:", jsonError);
+        return new Response(
+          JSON.stringify({ 
+            error: "Invalid JSON format", 
+            details: "Request body is not valid JSON" 
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    } catch (parseError) {
+      console.error("Request parsing error:", parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid request data", 
+          details: "Could not parse request data" 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Validate body schema
+    let validatedBody: MeetingAcceptRequest;
+    try {
+      validatedBody = bodySchema.parse(body) as MeetingAcceptRequest;
+    } catch (validationError) {
+      console.error("Body validation error:", validationError);
+      if (validationError instanceof z.ZodError) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Invalid request data", 
+            details: validationError.errors 
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid request data" 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const supabase = createServerSupabase(cookies);
 
     // Handle user authentication
     let user;
     if (!isTest) {
-      // Validate real session in production mode
-      const {
-        data: { session },
-        error: authError,
-      } = await supabase.auth.getSession();
+      try {
+        // Validate real session in production mode
+        const {
+          data: { session },
+          error: authError,
+        } = await supabase.auth.getSession();
 
-      if (authError || !session) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
+        if (authError || !session) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        user = session.user;
+      } catch (sessionError) {
+        console.error("Session error:", sessionError);
+        return new Response(JSON.stringify({ error: "Authentication error" }), {
+          status: 500,
           headers: { "Content-Type": "application/json" },
         });
       }
-
-      user = session.user;
     } else {
       // Use mock user in test mode
-      console.log("API Accept: Using mock user for tests");
       user = {
         id: "test-user-id",
         email: "test@example.com",
       };
     }
 
-    const body = await request.json();
-    const validatedBody = bodySchema.parse(body) as MeetingAcceptRequest;
-
     // Get category details
     let category;
     if (!isTest) {
-      // In production, fetch from database
-      const { data: categoryData, error: categoryError } = await supabase
-        .from("meeting_categories")
-        .select("*")
-        .eq("id", validatedBody.categoryId)
-        .single();
+      try {
+        // In production, fetch from database
+        const { data: categoryData, error: categoryError } = await supabase
+          .from("meeting_categories")
+          .select("*")
+          .eq("id", validatedBody.categoryId)
+          .single();
 
-      if (categoryError || !categoryData) {
-        console.error("Category error:", categoryError);
-        return new Response(JSON.stringify({ error: "Invalid meeting category" }), {
-          status: 400,
+        if (categoryError || !categoryData) {
+          console.error("Category error:", categoryError);
+          return new Response(JSON.stringify({ error: "Invalid meeting category" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        category = categoryData;
+      } catch (categoryError) {
+        console.error("Category fetch error:", categoryError);
+        return new Response(JSON.stringify({ error: "Error retrieving category data" }), {
+          status: 500,
           headers: { "Content-Type": "application/json" },
         });
       }
-
-      category = categoryData;
     } else {
       // In test mode, use mock category
-      console.log("API Accept: Using mock category data");
       category = {
         id: validatedBody.categoryId,
         name: "Mock Category",
@@ -123,30 +226,35 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Check for conflicts
     let conflicts: { id: string; title: string; start_time: string; end_time: string }[] = [];
     if (!isTest) {
-      // W trybie produkcyjnym sprawdź konflikty w bazie danych
-      const { data: conflictsData, error: conflictsError } = await supabase
-        .from("meetings")
-        .select("id, title, start_time, end_time")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .or(
-          `and(start_time.lte.${validatedBody.endTime},end_time.gte.${validatedBody.startTime}),` +
-            `and(start_time.gte.${validatedBody.startTime},start_time.lt.${validatedBody.endTime}),` +
-            `and(end_time.gt.${validatedBody.startTime},end_time.lte.${validatedBody.endTime})`
-        );
+      try {
+        // W trybie produkcyjnym sprawdź konflikty w bazie danych
+        const { data: conflictsData, error: conflictsError } = await supabase
+          .from("meetings")
+          .select("id, title, start_time, end_time")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .or(
+            `and(start_time.lte.${validatedBody.endTime},end_time.gte.${validatedBody.startTime}),` +
+              `and(start_time.gte.${validatedBody.startTime},start_time.lt.${validatedBody.endTime}),` +
+              `and(end_time.gt.${validatedBody.startTime},end_time.lte.${validatedBody.endTime})`
+          );
 
-      if (conflictsError) {
-        console.error("Conflicts check error:", conflictsError);
-        return new Response(JSON.stringify({ error: "Error checking for conflicts" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        if (conflictsError) {
+          console.error("Conflicts check error:", conflictsError);
+          return new Response(JSON.stringify({ error: "Error checking for conflicts" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        conflicts = conflictsData || [];
+      } catch (conflictError) {
+        console.error("Conflict check error:", conflictError);
+        // Proceed without conflict checking if it fails
+        conflicts = [];
       }
-
-      conflicts = conflictsData || [];
     } else {
       // W trybie testowym nie ma konfliktów lub używamy mocka
-      console.log("API Accept: Skipping conflict check in test mode");
     }
 
     // Prepare meeting data
@@ -166,20 +274,45 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Save the meeting
     let meeting: DatabaseMeeting;
     if (!isTest) {
-      // W trybie produkcyjnym zapisz do bazy danych
-      const { data: insertedMeeting, error: insertError } = await supabase
-        .from("meetings")
-        .insert(meetingData)
-        .select("*, meeting_categories(id, name, suggested_attire)")
-        .single();
+      try {
+        // W trybie produkcyjnym zapisz do bazy danych
+        const { data: insertedMeeting, error: insertError } = await supabase
+          .from("meetings")
+          .insert(meetingData)
+          .select("*, meeting_categories(id, name, suggested_attire)")
+          .single();
 
-      if (insertError) {
-        console.error("Meeting insert error:", insertError);
+        if (insertError) {
+          console.error("Meeting insert error:", insertError);
+          return new Response(
+            JSON.stringify({
+              error: "Error saving meeting",
+              details: insertError.message,
+              code: insertError.code,
+            }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+
+        if (!insertedMeeting) {
+          console.error("No meeting data returned after insert");
+          return new Response(JSON.stringify({ error: "Error saving meeting - no data returned" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+            
+          });
+        }
+
+        meeting = insertedMeeting;
+      } catch (insertError) {
+        console.error("Meeting insert unexpected error:", insertError);
         return new Response(
           JSON.stringify({
-            error: "Error saving meeting",
-            details: insertError.message,
-            code: insertError.code,
+            error: "Unexpected error saving meeting",
+            details: insertError instanceof Error ? insertError.message : String(insertError)
           }),
           {
             status: 500,
@@ -187,79 +320,46 @@ export const POST: APIRoute = async ({ request, cookies }) => {
           }
         );
       }
-
-      if (!insertedMeeting) {
-        console.error("No meeting data returned after insert");
-        return new Response(JSON.stringify({ error: "Error saving meeting - no data returned" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      meeting = insertedMeeting;
     } else {
-      // W trybie testowym używamy mocka
-      console.log("API Accept: Using mock meeting data in test mode");
+      // W trybie testowym zwróć mocka spotkania
       meeting = {
-        id: "test-meeting-id-" + new Date().getTime(),
-        user_id: "test-user-id",
-        title: meetingData.title,
-        description: meetingData.description,
-        category_id: meetingData.category_id,
-        start_time: meetingData.start_time,
-        end_time: meetingData.end_time,
-        location_name: meetingData.location_name,
-        location: null,
-        ai_generated: true,
-        original_note: meetingData.original_note,
-        ai_generated_notes: meetingData.ai_generated_notes,
+        ...meetingData,
+        id: "test-meeting-id",
         created_at: new Date().toISOString(),
         updated_at: null,
         deleted_at: null,
+        status: "confirmed",
         meeting_categories: category,
-      } as unknown as DatabaseMeeting; // Use unknown as intermediate step for safer type assertion
+      } as DatabaseMeeting;
     }
 
-    // Transform the meeting data
-    const transformedMeeting = transformSupabaseMeeting(meeting);
-
-    // Add conflicts to the response
-    const response = {
-      ...transformedMeeting,
-      conflicts: conflicts?.map((conflict) => ({
-        id: conflict.id,
-        title: conflict.title,
-        startTime: conflict.start_time,
-        endTime: conflict.end_time,
-      })),
-    };
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Redirect": "/proposals",
-      },
-    });
+    // Zwróć dodane spotkanie wraz z informacją o konfliktach
+    return new Response(
+      JSON.stringify({
+        meeting: transformSupabaseMeeting(meeting),
+        conflicts: conflicts.map((conflict) => ({
+          id: conflict.id,
+          title: conflict.title,
+          startTime: conflict.start_time,
+          endTime: conflict.end_time,
+        })),
+      }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
-    console.error("Error accepting meeting proposal:", error);
-
-    if (error instanceof z.ZodError) {
-      return new Response(
-        JSON.stringify({
-          error: "Invalid request data",
-          details: error.errors,
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Unexpected error in meeting acceptance:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Unexpected server error",
+        details: error instanceof Error ? error.message : "Unknown error"
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 };

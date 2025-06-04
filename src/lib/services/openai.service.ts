@@ -23,7 +23,6 @@ export class OpenAIService {
     }
     
     if (this.isTestEnvironment) {
-      console.log("Using mock OpenAI implementation for tests");
       this.openai = this.createMockOpenAI() as unknown as OpenAI;
       return this.openai;
     }
@@ -35,20 +34,8 @@ export class OpenAIService {
     // Then try our CloudFlare utility
     const cloudflareKey = getOpenAIKey();
     
-    // Check if we're in production environment based on PUBLIC_ENV_NAME
-    const isProd = import.meta.env.PUBLIC_ENV_NAME === "prod";
-    
     // Use only OpenAI keys, no OpenRouter
     const apiKey = platformKey || fallbackKey || cloudflareKey;
-    
-    // Improved logging for debugging
-    console.log("OpenAI Service - API Key detection:");
-    console.log("PLATFORM_OPENAI_KEY present:", !!platformKey);
-    console.log("OPENAI_API_KEY present:", !!fallbackKey);
-    console.log("CloudFlare key present:", !!cloudflareKey);
-    console.log("Environment:", import.meta.env.PUBLIC_ENV_NAME);
-    console.log("Is Production:", isProd);
-    console.log("Final API Key exists:", !!apiKey);
     
     if (!apiKey) {
       throw new Error("OpenAI API key is not configured. Please check your environment variables.");
@@ -56,8 +43,6 @@ export class OpenAIService {
 
     // Always use OpenAI API
     const baseURL = "https://api.openai.com/v1";
-    
-    console.log("OpenAI Service - Using base URL:", baseURL);
     
     this.openai = new OpenAI({
       apiKey,
@@ -74,9 +59,8 @@ export class OpenAIService {
       chat: {
         completions: {
           create: async () => {
-            console.log("MOCK: Creating fake chat completion");
             // Symuluj opóźnienie, aby zachowanie było bardziej realistyczne
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             // Zwróć zmockowaną odpowiedź z propozycjami spotkań
             return {
@@ -128,11 +112,9 @@ export class OpenAIService {
     try {
       // Get OpenAI client lazily
       const openai = this.getOpenAIClient();
-      console.log("Creating chat completion with messages:", this.messages);
 
       // Użyj modelu z zmiennych środowiskowych lub domyślnego
       const model = import.meta.env.OPENAI_MODEL || "gpt-3.5-turbo";
-      console.log("Using model:", model);
 
       const completion = await openai.chat.completions.create({
         messages: this.messages,
@@ -142,7 +124,6 @@ export class OpenAIService {
         response_format: { type: "json_object" },
       });
 
-      console.log("Received completion response:", completion.choices[0].message);
       return completion.choices[0].message.content;
     } catch (error) {
       console.error("Error in OpenAI chat completion:", error);
