@@ -33,62 +33,71 @@ const PUBLIC_PATHS = [
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const { request, cookies, redirect } = context;
-  const url = new URL(request.url);
-  const pathname = url.pathname;
+  try {
+    const { request, cookies, redirect } = context;
+    const url = new URL(request.url);
+    const pathname = url.pathname;
 
-  // Create the Supabase client for this request
-  const supabase = createServerSupabase(cookies);
-  
-  // Initialize locals with the client
-  context.locals = { 
-    supabase
-  };
-
-  // Skip auth check for public paths and static assets
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
-    console.log("[Middleware] Skipping auth check for public path:", pathname);
-    return next();
-  }
-
-  // Check if auth feature is enabled - SKIP AUTH CHECK IF DISABLED
-  const authEnabled = isFeatureEnabled("auth");
-  if (!authEnabled) {
-    console.log("[Middleware] Auth feature is disabled, skipping auth check");
-    return next();
-  }
-
-  // Check for session cookie
-  const authToken = cookies.get(AUTH_TOKEN_COOKIE);
-
-  console.log("[Middleware] Checking auth for path:", pathname);
-  console.log("[Middleware] Auth token present:", !!authToken);
-
-  // Pobieramy sesję
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  console.log("[Middleware] Session check result:", {
-    hasSession: !!session,
-    error: error?.message,
-    user: session?.user?.email,
-  });
-
-  if (!session) {
-    console.log("[Middleware] No valid session found, redirecting to login");
-    if (authToken) {
-      cookies.delete(AUTH_TOKEN_COOKIE, { path: "/" });
+    // Skip auth check for public paths and static assets
+    if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
+      return next();
     }
-    return redirect("/auth/login");
+
+    // Check if auth feature is enabled - SKIP AUTH CHECK IF DISABLED
+    try {
+      const authEnabled = isFeatureEnabled("auth");
+      if (!authEnabled) {
+        return next();
+      }
+    } catch (error) {
+      console.error("Error checking auth feature flag:", error);
+      // Default to allowing access if we can't check the feature flag
+      return next();
+    }
+
+    try {
+      // Create the Supabase client for this request
+      const supabase = createServerSupabase(cookies);
+      
+      // Initialize locals with the client
+      context.locals = {
+        supabase,
+        ...context.locals
+      };
+
+      // Check for session cookie
+      const authToken = cookies.get?.(AUTH_TOKEN_COOKIE);
+
+      // Get session (with error handling)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!session) {
+          if (authToken && typeof cookies.delete === 'function') {
+            cookies.delete(AUTH_TOKEN_COOKIE, { path: "/" });
+          }
+          return redirect("/auth/login");
+        }
+
+        // Add user data to locals for use in routes
+        context.locals.user = session.user;
+        context.locals.session = session;
+      } catch (sessionError) {
+        console.error("Error getting session:", sessionError);
+        // If we can't get the session, redirect to login
+        return redirect("/auth/login");
+      }
+    } catch (error) {
+      console.error("Error in middleware:", error);
+      // If there's an error in the middleware, allow the request to continue
+      // This prevents breaking the site if there's an authentication issue
+      return next();
+    }
+
+    return next();
+  } catch (error) {
+    console.error("Unhandled error in middleware:", error);
+    // Always continue in case of errors to prevent breaking the site
+    return next();
   }
-
-  // Add user data to locals for use in routes
-  context.locals.user = session.user;
-  context.locals.session = session;
-
-  // Using optional chaining to safely access user.email
-  console.log("[Middleware] Valid session found for user:", session.user?.email || "unknown email");
-  return next();
 });

@@ -14,14 +14,14 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "dotenv -e .env.test -- cross-env NODE_OPTIONS=\"--no-node-snapshot\" playwright test e2e/meeting-proposals-e2e-test.spec.ts",
-    "test:e2e:ui": "dotenv -e .env.test -- cross-env NODE_OPTIONS=\"--no-node-snapshot\" playwright test --ui",
-    "test:e2e:file": "dotenv -e .env.test -- cross-env NODE_OPTIONS=\"--no-node-snapshot\" playwright test",
-    "test:e2e:all": "dotenv -e .env.test -- node ./e2e/run-tests.js",
-    "e2e:dev": "dotenv -e .env.test -- astro dev --port 3000 --host --mode test"
+    "test:e2e": "dotenv -e .env.test -- cross-env PUBLIC_ENV_NAME=test NODE_OPTIONS=\"--no-node-snapshot\" playwright test e2e/meeting-proposals-e2e-test.spec.ts",
+    "test:e2e:ui": "dotenv -e .env.test -- cross-env PUBLIC_ENV_NAME=test NODE_OPTIONS=\"--no-node-snapshot\" playwright test --ui",
+    "test:e2e:file": "dotenv -e .env.test -- cross-env PUBLIC_ENV_NAME=test NODE_OPTIONS=\"--no-node-snapshot\" playwright test",
+    "test:e2e:all": "dotenv -e .env.test -- cross-env PUBLIC_ENV_NAME=test node ./e2e/run-tests.js",
+    "e2e:dev": "dotenv -e .env.test -- cross-env PUBLIC_ENV_NAME=test astro dev --port 3000 --host --mode test"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^9.0.0",
+    "@astrojs/cloudflare": "^9.2.1",
     "@astrojs/node": "^7.0.4",
     "@astrojs/react": "^3.0.9",
     "@astrojs/tailwind": "^5.1.0",
@@ -58,6 +58,7 @@
   "devDependencies": {
     "@eslint/compat": "^1.0.0",
     "@playwright/test": "^1.52.0",
+    "@testing-library/dom": "^10.0.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

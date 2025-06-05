@@ -2,8 +2,7 @@ name: Master Deployment Workflow
 
 # This workflow runs on pushes to the master branch to deploy to Cloudflare Pages
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   # Linting job - verifies code adheres to style guidelines
@@ -60,6 +59,7 @@ jobs:
       PUBLIC_SUPABASE_KEY: ${{ secrets.PUBLIC_SUPABASE_KEY }}
       PUBLIC_SUPABASE_PROJECT_ID: ${{ secrets.PUBLIC_SUPABASE_PROJECT_ID }}
       PLATFORM_OPENAI_KEY: ${{ secrets.PLATFORM_OPENAI_KEY }}
+      PUBLIC_ENV_NAME: prod
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
