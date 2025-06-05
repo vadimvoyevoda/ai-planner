@@ -131,7 +131,7 @@ const getEnvFlag = (flagName: string): boolean | undefined => {
 };
 
 // Cache dla flag funkcjonalności
-const featureFlagCache: Record<string, Record<string, boolean>> = {};
+const featureFlagCache: Record<string, boolean> = {};
 
 /**
  * Sprawdza, czy dana funkcjonalność jest włączona
@@ -142,33 +142,33 @@ export const isFeatureEnabled = (featureName: string, environment?: Environment)
   
   // Sprawdź cache
   if (featureFlagCache[cacheKey] !== undefined) {
-    return featureFlagCache[cacheKey] as unknown as boolean;
+    return featureFlagCache[cacheKey];
   }
   
   try {
     // Najpierw sprawdź zmienne środowiskowe
     const envValue = getEnvFlag(featureName);
     if (envValue !== undefined) {
-      featureFlagCache[cacheKey] = { value: envValue } as unknown as Record<string, boolean>;
+      featureFlagCache[cacheKey] = envValue;
       return envValue;
     }
     
     // Następnie sprawdź flagi dynamiczne
     const dynamicValue = dynamicFlags[env]?.[featureName];
     if (dynamicValue !== undefined) {
-      featureFlagCache[cacheKey] = { value: dynamicValue } as unknown as Record<string, boolean>;
+      featureFlagCache[cacheKey] = dynamicValue;
       return dynamicValue;
     }
     
     // Na końcu sprawdź domyślne flagi
     const defaultValue = defaultFlags[env]?.[featureName as FeatureFlagName];
     if (defaultValue !== undefined) {
-      featureFlagCache[cacheKey] = { value: defaultValue } as unknown as Record<string, boolean>;
+      featureFlagCache[cacheKey] = defaultValue;
       return defaultValue;
     }
     
     // Jeśli flaga nie jest zdefiniowana, zwróć false
-    featureFlagCache[cacheKey] = { value: false } as unknown as Record<string, boolean>;
+    featureFlagCache[cacheKey] = false;
     return false;
   } catch (error) {
     logFeatureFlag(
@@ -235,7 +235,7 @@ export const fetchFeatureFlags = async (environment: Environment): Promise<void>
     setTimeout(() => {
       const mockData = {
         auth: Math.random() > 0.5,
-        collections: Math.random() > 0.5,
+        collections: true,
       };
       
       updateFeatureFlags(environment, mockData)

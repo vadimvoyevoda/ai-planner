@@ -51,7 +51,7 @@ openai.service – obsługa błędów, retry, format JSON
 – Supabase lokalny emulator lub testowa baza
 – Mockowanie OpenAI za pomocą MSW lub stub klasy OpenAIService
 – Browser: jsdom (unit), Playwright Chromium (E2E)
-– Zmienna środowiskowa: PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_KEY, OPENAI_API_KEY
+– Zmienna środowiskowa: PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_KEY, PLATFORM_OPENAI_KEY
 
 6. Narzędzia do testowania
 – Vitest + @testing-library/react + jsdom
