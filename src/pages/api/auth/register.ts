@@ -9,6 +9,44 @@ const registerSchema = z.object({
 
 export const prerender = false;
 
+/**
+ * Funkcja wykrywająca publiczny URL na podstawie nagłówków żądania.
+ * Szczególnie przydatna gdy aplikacja działa za reverse proxy jak Cloudflare.
+ */
+function getPublicUrl(request: Request): string {
+  // Pobierz protokół (http/https)
+  let protocol = "https";
+  const forwardedProto = request.headers.get("x-forwarded-proto") || 
+                         request.headers.get("X-Forwarded-Proto");
+  if (forwardedProto) {
+    protocol = forwardedProto.split(",")[0].trim();
+  }
+
+  // Pobierz hosta (domenę)
+  let host = request.headers.get("host") || 
+             request.headers.get("Host") ||
+             request.headers.get("x-forwarded-host") || 
+             request.headers.get("X-Forwarded-Host");
+  
+  if (!host) {
+    // Jeśli nie znaleziono w nagłówkach, próbujemy wyciągnąć z URL
+    try {
+      host = new URL(request.url).host;
+    } catch (e) {
+      // Fallback, choć nie powinien być nigdy potrzebny
+      console.error("Nie można określić hosta z request.url:", e);
+      host = "localhost:4321"; // domyślny port Astro
+    }
+  }
+
+  // Cloudflare może dodawać port do nagłówka Host, usuwamy go dla HTTPS
+  if (protocol === "https" && host.includes(":")) {
+    host = host.split(":")[0];
+  }
+
+  return `${protocol}://${host}`;
+}
+
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   try {
     const data = await request.json();
@@ -19,7 +57,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       email,
       password,
       options: {
-        emailRedirectTo: `${new URL(request.url).origin}/auth/login`,
+        emailRedirectTo: `${getPublicUrl(request)}/auth/login`,
       },
     });
 
