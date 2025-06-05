@@ -23,7 +23,7 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
   const [selectedProposal, setSelectedProposal] = React.useState<MeetingProposal | null>(null);
   const [conflicts, setConflicts] = React.useState<MeetingConflict[] | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
-  const [isCollectionsEnabled, setIsCollectionsEnabled] = React.useState(true);
+  // Always start with features enabled to prevent flashing the disabled message
   const [isAuthEnabled, setIsAuthEnabled] = React.useState(true);
 
   const proposalsRef = React.useRef<HTMLDivElement>(null);
@@ -147,7 +147,7 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
 
   // Sprawdzanie flag przy montowaniu komponentu
   React.useEffect(() => {
-    setIsCollectionsEnabled(isFeatureEnabled("collections"));
+    // Only check auth flag, no longer checking collections flag
     setIsAuthEnabled(isFeatureEnabled("auth"));
   }, []);
 
