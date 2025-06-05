@@ -22,7 +22,7 @@ const featureFlagsDatabase: Record<Environment, Record<string, boolean>> = {
     newPaymentSystem: true,
   },
   prod: {
-    auth: false,
+    auth: true,
     collections: true,
     newPaymentSystem: false,
   },

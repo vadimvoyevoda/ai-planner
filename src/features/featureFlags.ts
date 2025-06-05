@@ -84,13 +84,32 @@ export const getCurrentEnvironment = (): Environment => {
     return currentEnvironmentCache;
   }
 
-  const envName = import.meta.env.PUBLIC_ENV_NAME || "local";
+  // Sprawdź najpierw zmienną środowiskową
+  const envName = import.meta.env.PUBLIC_ENV_NAME || "";
   
   if (envName === "local" || envName === "integration" || envName === "prod") {
     currentEnvironmentCache = envName;
     return envName;
   }
   
+  // Jeśli nie ma zmiennej środowiskowej, spróbuj wykryć na podstawie URL
+  try {
+    const url = new URL(window.location.href);
+    
+    // Sprawdź domenę - jeśli zawiera .pages.dev, jest to prawdopodobnie środowisko produkcyjne
+    if (url.hostname.includes('.pages.dev') || 
+        url.hostname.includes('.vercel.app') || 
+        !url.hostname.includes('localhost')) {
+      console.log("Wykryto środowisko produkcyjne na podstawie URL:", url.hostname);
+      currentEnvironmentCache = "prod";
+      return "prod";
+    }
+  } catch (e) {
+    console.warn("Nie udało się wykryć środowiska na podstawie URL:", e);
+  }
+  
+  // Domyślnie zwróć local
+  console.log("Używam domyślnego środowiska 'local'");
   currentEnvironmentCache = "local";
   return "local";
 };
