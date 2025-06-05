@@ -24,6 +24,7 @@ const PUBLIC_PATHS = [
   "/api/auth/register",
   "/api/auth/reset-password",
   "/api/auth/logout",
+  "/api/feature-flags",
   "/auth/verify",
   "/auth/callback",
   // Static assets
@@ -61,8 +62,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       
       // Initialize locals with the client
       context.locals = {
-        supabase,
-        ...context.locals
+        ...context.locals,
+        supabase
       };
 
       // Check for session cookie
