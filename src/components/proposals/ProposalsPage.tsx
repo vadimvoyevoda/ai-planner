@@ -158,21 +158,6 @@ export default function ProposalsPage({ initialNote = "", initialLocation = "", 
     }
   }, [initialNote]);
 
-  // Renderowanie komponentu zastępczego, gdy funkcja jest wyłączona
-  if (!isCollectionsEnabled) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold mb-4">Funkcja tymczasowo niedostępna</h1>
-        <p className="text-gray-600 mb-8">
-          Ta funkcjonalność jest obecnie wyłączona. Prosimy spróbować później.
-        </p>
-        <Button onClick={() => window.location.href = "/"}>
-          Wróć do strony głównej
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">Propozycje terminów spotkań</h1>
